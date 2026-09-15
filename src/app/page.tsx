@@ -7,13 +7,14 @@ import HouseInteriorSection from "@/components/HouseInteriorSection";
 import DivisionModal from "@/components/DivisionModal";
 import ConsultationModal from "@/components/ConsultationModal";
 import { Division } from "@/data/divisions";
-import { motion, AnimatePresence } from "framer-motion";
+import { gsap } from "gsap";
 
 export default function HomePage() {
   const [isInsideHouse, setIsInsideHouse] = useState(false);
   const [selectedDivision, setSelectedDivision] = useState<Division | null>(null);
   const [consultationOpen, setConsultationOpen] = useState(false);
   const [consultationDivision, setConsultationDivision] = useState<string>("");
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const handleOpenConsultation = (divisionTitle?: string) => {
     setConsultationDivision(divisionTitle || "General Executive Office");
@@ -26,18 +27,27 @@ export default function HomePage() {
     setConsultationOpen(true);
   };
 
+  const handleEnterHouse = () => {
+    if (containerRef.current) {
+      gsap.to(containerRef.current, {
+        opacity: 0,
+        scale: 1.05,
+        duration: 0.5,
+        onComplete: () => {
+          setIsInsideHouse(true);
+          gsap.to(containerRef.current, { opacity: 1, scale: 1, duration: 0.6 });
+        }
+      });
+    } else {
+      setIsInsideHouse(true);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#071526] text-slate-100 selection:bg-[#c5a869] selection:text-[#071526]">
-      <AnimatePresence mode="wait">
+      <div ref={containerRef} className="transition-all duration-300">
         {!isInsideHouse ? (
-          <motion.div 
-            key="facade"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.05 }}
-            transition={{ duration: 0.6 }}
-            className="flex flex-col justify-between min-h-screen"
-          >
+          <div className="flex flex-col justify-between min-h-screen">
             {/* 1. Header / Navigation */}
             <Navbar onOpenConsultation={() => handleOpenConsultation()} />
 
@@ -45,26 +55,20 @@ export default function HomePage() {
             <HeroSection
               onSelectDivision={(division) => setSelectedDivision(division)}
               onOpenConsultation={(divTitle) => handleOpenConsultation(divTitle)}
-              onEnterHouse={() => setIsInsideHouse(true)}
+              onEnterHouse={handleEnterHouse}
             />
-          </motion.div>
+          </div>
         ) : (
-          <motion.div 
-            key="interior"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          >
+          <div>
             {/* Inside House Interior UI matching screenshot */}
             <HouseInteriorSection
               onSelectDivision={(division) => setSelectedDivision(division)}
               onOpenConsultation={(divTitle) => handleOpenConsultation(divTitle)}
               onReturnToFacade={() => setIsInsideHouse(false)}
             />
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
 
       {/* Interactive Modals */}
       <DivisionModal

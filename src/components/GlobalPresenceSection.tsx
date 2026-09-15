@@ -1,10 +1,53 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Globe2, ShieldCheck, Landmark, Network } from "lucide-react";
-import { motion } from "framer-motion";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 export default function GlobalPresenceSection() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        ".presence-content",
+        { opacity: 0, y: 30 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top 80%",
+          },
+        }
+      );
+
+      gsap.fromTo(
+        ".hub-card",
+        { opacity: 0, scale: 0.95, y: 20 },
+        {
+          opacity: 1,
+          scale: 1,
+          y: 0,
+          duration: 0.6,
+          stagger: 0.1,
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top 75%",
+          },
+        }
+      );
+    }, containerRef);
+    return () => ctx.revert();
+  }, []);
+
   const hubs = [
     {
       city: "LONDON HQ",
@@ -34,7 +77,6 @@ export default function GlobalPresenceSection() {
 
   return (
     <section id="global-opportunities" className="py-24 bg-[#050D18] border-t border-b border-[#c5a869]/20 relative overflow-hidden">
-      {/* World Map Grid Watermark */}
       <div
         className="absolute inset-0 opacity-5 pointer-events-none"
         style={{
@@ -43,22 +85,9 @@ export default function GlobalPresenceSection() {
         }}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <motion.div 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: { staggerChildren: 0.15 }
-            }
-          }}
-          className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center"
-        >
-          {/* Left info */}
-          <motion.div variants={{ hidden: { opacity: 0, x: -30 }, visible: { opacity: 1, x: 0, transition: { duration: 0.6 } } }} className="lg:col-span-5 space-y-6">
+      <div ref={containerRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="presence-content lg:col-span-5 space-y-6 opacity-0">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0E243D] border border-[#c5a869]/30 text-xs tracking-[0.2em] font-serif text-[#DFBE76] uppercase">
               <Globe2 className="w-3.5 h-3.5" />
               <span>GLOBAL FOOTPRINT</span>
@@ -96,15 +125,13 @@ export default function GlobalPresenceSection() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Right Hubs Cards */}
           <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {hubs.map((hub, idx) => (
-              <motion.div
-                variants={{ hidden: { opacity: 0, scale: 0.95, y: 20 }, visible: { opacity: 1, scale: 1, y: 0 } }}
+              <div
                 key={idx}
-                className="bg-[#0B1C31]/70 border border-slate-800 hover:border-[#c5a869]/50 rounded-lg p-5 transition-all duration-200 hover:bg-[#0E243D]/90 hover:shadow-xl"
+                className="hub-card bg-[#0B1C31]/70 border border-slate-800 hover:border-[#c5a869]/50 rounded-lg p-5 transition-all duration-200 hover:bg-[#0E243D]/90 hover:shadow-xl opacity-0"
               >
                 <div className="flex items-center justify-between mb-2">
                   <span
@@ -124,10 +151,10 @@ export default function GlobalPresenceSection() {
                 <div className="inline-block text-[10px] uppercase font-mono tracking-wider text-slate-300 bg-[#071526] px-2 py-0.5 rounded border border-slate-700">
                   {hub.stats}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

@@ -1,9 +1,8 @@
-"use client";
-
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { DIVISIONS, Division } from "@/data/divisions";
-import { motion, AnimatePresence } from "framer-motion";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   Search,
   Calculator,
@@ -20,6 +19,10 @@ import {
   ChevronRight
 } from "lucide-react";
 
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
 // Dynamic imports for 3D WebGL elements to prevent SSR issues
 const Atrium3DGlobe = dynamic(() => import("./Atrium3DGlobe"), { ssr: false });
 const AtmosphericDust = dynamic(() => import("./AtmosphericDust"), { ssr: false });
@@ -30,16 +33,6 @@ interface HouseInteriorSectionProps {
   onReturnToFacade?: () => void;
 }
 
-/* 
-  =========================================================
-  DARK GLASS SIGN BOX PLAQUE CTA COMPONENT
-  Exact replica of the user reference screenshot:
-  - Dark blue glass container with backdrop blur
-  - Gold trim border
-  - Centered metallic gold line icon at top
-  - Centered clean serif all-caps typography in white & gold
-  =========================================================
-*/
 function GlassSignPlaqueCTA({
   title,
   icon: Icon,
@@ -51,16 +44,13 @@ function GlassSignPlaqueCTA({
 }) {
   return (
     <div
-      className={`bg-[#071526]/95 border-2 ${
+      className={`bg-[#071526]/45 hover:bg-[#071526]/65 border-2 ${
         isActive
-          ? "border-[#DFBE76] shadow-[0_0_35px_rgba(223,190,118,0.9)] scale-105"
+          ? "bg-[#071526]/75 border-[#DFBE76] shadow-[0_0_35px_rgba(223,190,118,0.9)] scale-105"
           : "border-[#DFBE76]/60 hover:border-[#DFBE76]"
       } rounded-xl p-3 sm:p-4 flex flex-col items-center justify-center text-center transition-all duration-300 backdrop-blur-md min-w-[170px] sm:min-w-[210px] shadow-2xl group-hover:border-[#DFBE76]`}
     >
-      {/* Top Center Gold Line Icon */}
       <Icon className="w-7 h-7 sm:w-9 sm:h-9 text-[#DFBE76] mb-2 filter drop-shadow-[0_0_8px_rgba(223,190,118,0.8)]" />
-
-      {/* Centered Serif All-Caps White/Gold Typography */}
       <h3
         className="text-[11px] sm:text-xs font-serif font-bold text-white tracking-widest leading-snug uppercase max-w-[190px]"
         style={{ fontFamily: "var(--font-cinzel), var(--font-playfair), Georgia, serif" }}
@@ -80,10 +70,13 @@ export default function HouseInteriorSection({
   const [roiCapital, setRoiCapital] = useState(500000);
   const [roiTermYears, setRoiTermYears] = useState(5);
 
-  // Zoom motion states (matching HeroSection door interaction)
   const [isZooming, setIsZooming] = useState(false);
-  const [zoomOrigin, setZoomOrigin] = useState("50% 50%");
   const [activeHoverHotspot, setActiveHoverHotspot] = useState<string | null>(null);
+
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const lobbyContainerRef = useRef<HTMLDivElement>(null);
+  const goldFlashRef = useRef<HTMLDivElement>(null);
+  const darkFadeRef = useRef<HTMLDivElement>(null);
 
   const calculatedYield = Math.round(roiCapital * (1 + 0.125 * roiTermYears));
 
@@ -91,64 +84,127 @@ export default function HouseInteriorSection({
     return DIVISIONS.find((d) => d.title.toLowerCase().includes(titlePartial.toLowerCase())) || DIVISIONS[0];
   };
 
-  // Handle Room / Booth Click with Outside-House Zoom Interaction
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Track Mouse Pointer Position for First-Person 3D Camera Perspective
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isZooming || !canvasRef.current || !lobbyContainerRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+    const yPct = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+
+    // Dynamic 3D perspective origin to follow first-person eye target
+    canvasRef.current.style.perspectiveOrigin = `${xPct.toFixed(1)}% ${yPct.toFixed(1)}%`;
+    lobbyContainerRef.current.style.transformOrigin = `${xPct.toFixed(1)}% ${yPct.toFixed(1)}%`;
+
+    // Subtle first-person head yaw and pitch tilt
+    const yaw = (xPct - 50) * 0.05;
+    const pitch = (50 - yPct) * 0.04;
+    gsap.to(lobbyContainerRef.current, {
+      rotateY: yaw,
+      rotateX: pitch,
+      duration: 0.5,
+      ease: "power1.out",
+    });
+  };
+
+  // Setup GSAP ScrollTrigger for First-Person (FPV) 3D Camera Walkthrough Zoom
+  useEffect(() => {
+    if (!sectionRef.current || !lobbyContainerRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "+=1400",
+          scrub: 1,
+          pin: true,
+          anticipatePin: 1,
+        },
+      });
+
+      tl.to(lobbyContainerRef.current, {
+        scale: 1.65,
+        z: 550,
+        rotateX: 2.5,
+        ease: "none",
+      });
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  // Handle Hotspot Click with GSAP Zoom Transition
   const handleHotspotClick = (
     originPercent: string,
     action: () => void
   ) => {
     if (isZooming) return;
-    setZoomOrigin(originPercent);
     setIsZooming(true);
 
-    setTimeout(() => {
-      action();
-      setIsZooming(false);
-    }, 1200);
+    if (lobbyContainerRef.current) {
+      lobbyContainerRef.current.style.transformOrigin = originPercent;
+      gsap.to(lobbyContainerRef.current, {
+        scale: 4.8,
+        z: 900,
+        filter: "brightness(1.7) blur(1.5px)",
+        duration: 1.3,
+        ease: "power2.inOut",
+      });
+    }
+
+    if (goldFlashRef.current) {
+      gsap.to(goldFlashRef.current, { opacity: 1, duration: 0.4, delay: 0.5 });
+    }
+
+    if (darkFadeRef.current) {
+      gsap.to(darkFadeRef.current, {
+        opacity: 1,
+        duration: 0.6,
+        delay: 0.7,
+        onComplete: () => {
+          action();
+          setIsZooming(false);
+          if (lobbyContainerRef.current) {
+            gsap.to(lobbyContainerRef.current, { scale: 1, z: 0, filter: "brightness(1) blur(0px)", duration: 0.5 });
+          }
+          if (goldFlashRef.current) gsap.to(goldFlashRef.current, { opacity: 0, duration: 0.3 });
+          if (darkFadeRef.current) gsap.to(darkFadeRef.current, { opacity: 0, duration: 0.3 });
+        },
+      });
+    }
   };
 
   return (
-    <div className="relative w-full min-h-screen bg-[#071526] text-white flex flex-col justify-between overflow-x-hidden select-none font-sans">
-      
-      {/* 
-        =========================================================
-        GRAND LOBBY INTERACTIVE CANVAS WITH DARK GLASS SIGN PLAQUES
-        =========================================================
-      */}
-      <main id="lobby-canvas" className="relative w-full max-w-[1920px] mx-auto min-h-[900px] flex flex-col justify-between items-center overflow-hidden">
-        
-        {/* WebGL Particle Dust */}
+    <div ref={sectionRef} className="relative w-full min-h-screen bg-[#071526] text-white flex flex-col justify-between overflow-x-hidden select-none font-sans">
+      <main
+        id="lobby-canvas"
+        ref={canvasRef}
+        onMouseMove={handleMouseMove}
+        className="relative w-full max-w-[1920px] mx-auto min-h-[900px] flex flex-col justify-between items-center overflow-hidden cursor-grab active:cursor-grabbing"
+        style={{ perspective: "1200px", perspectiveOrigin: "50% 50%", transformStyle: "preserve-3d" }}
+      >
         <div className={`absolute inset-0 z-0 pointer-events-none transition-opacity duration-500 ${isZooming ? 'opacity-0' : 'opacity-100'}`}>
           <AtmosphericDust />
         </div>
 
-        {/* 
-          =========================================================
-          CINEMATIC BACKDROP IMAGE WITH INTERACTIVE ZOOM MOTION
-          =========================================================
-        */}
-        <motion.div
+        <div
+          ref={lobbyContainerRef}
           className="relative w-full h-[850px] md:h-[1050px] overflow-hidden transform-gpu will-change-transform"
-          initial={{ scale: 1, filter: "brightness(1) blur(0px)" }}
-          animate={
-            isZooming
-              ? {
-                  scale: 4.8,
-                  filter: "brightness(1.7) blur(1.5px)",
-                }
-              : {
-                  scale: 1,
-                  filter: "brightness(1) blur(0px)",
-                }
-          }
-          transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
-          style={{ transformOrigin: zoomOrigin, backfaceVisibility: "hidden" }}
+          style={{ transformOrigin: "50% 50%", transformStyle: "preserve-3d", backfaceVisibility: "hidden" }}
         >
-          {/* Base Lobby Visual Reference Image */}
-          <img
-            src="/home_page_ui_reference.jpg"
-            alt="Begum House Grand Atrium Lobby"
-            className="w-full h-full object-cover object-center transform-gpu"
-          />
+          {/* Base Lobby Visual Reference Image with top navbar crop/scale */}
+          <div className="relative w-full h-[108%] -top-[6%] overflow-hidden">
+            <img
+              src="/home_page_ui_reference.jpg"
+              alt="Begum House Grand Atrium Lobby"
+              className="w-full h-full object-cover object-center transform-gpu scale-105 origin-bottom"
+            />
+          </div>
+
+          {/* Top Dark Glass Gradient Overlay (covers any lingering top navbar baked in image) */}
+          <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-[#071526] via-[#071526]/85 to-transparent z-20 pointer-events-none" />
 
           {/* Ambient Shader Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#071526]/80 via-transparent to-[#071526]/40 pointer-events-none" />
@@ -305,42 +361,26 @@ export default function HouseInteriorSection({
             />
           </div>
 
-        </motion.div>
+        </div>
 
-        {/* 
-          =========================================================
-          CINEMATIC MOTION OVERLAYS (MATCHING HERO SECTION DOOR)
-          =========================================================
-        */}
-        {/* Golden flash */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isZooming ? 1 : 0 }}
-          transition={{ duration: 0.4, delay: 0.5 }}
-          className="absolute inset-0 bg-[#c5a869] z-40 pointer-events-none mix-blend-overlay"
+        {/* CINEMATIC TRANSITION OVERLAYS */}
+        <div
+          ref={goldFlashRef}
+          className="absolute inset-0 bg-[#c5a869] z-40 pointer-events-none mix-blend-overlay opacity-0"
         />
-        {/* Dark fade match */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isZooming ? 1 : 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="absolute inset-0 bg-[#071526] z-50 pointer-events-none"
+        <div
+          ref={darkFadeRef}
+          className="absolute inset-0 bg-[#071526] z-50 pointer-events-none opacity-0"
         />
-
       </main>
 
       {/* Footer Bar */}
       <footer className="bg-[#040D18] border-t border-slate-800 py-4 px-4 md:px-8 text-slate-400 text-[11px]">
         <div className="max-w-[1920px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          
-          <div>
-            © 2024 BEGUM HOUSE. ALL RIGHTS RESERVED.
-          </div>
-
+          <div>© 2024 BEGUM HOUSE. ALL RIGHTS RESERVED.</div>
           <div className="text-[#DFBE76] font-serif tracking-widest text-[10px] uppercase font-semibold">
             GLOBAL SERVICES. INTELLIGENT OPERATIONS.
           </div>
-
           <div className="flex items-center gap-6">
             <button onClick={() => alert("Careers page active")} className="hover:text-white transition-colors">CAREERS</button>
             <span>|</span>
@@ -348,24 +388,13 @@ export default function HouseInteriorSection({
             <span>|</span>
             <button onClick={() => alert("Privacy policy")} className="hover:text-white transition-colors">PRIVACY</button>
           </div>
-
         </div>
       </footer>
 
-      {/* 
-        =========================================================
-        INSIGHTS ROI CALCULATOR MODAL
-        =========================================================
-      */}
-      <AnimatePresence>
-        {showRoiModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-[#0B1C31] border-2 border-[#DFBE76] rounded-2xl max-w-lg w-full p-6 text-white shadow-[0_0_50px_rgba(223,190,118,0.4)] relative"
-            >
+      {/* INSIGHTS ROI CALCULATOR MODAL */}
+      {showRoiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-all animate-in fade-in duration-200">
+          <div className="bg-[#0B1C31] border-2 border-[#DFBE76] rounded-2xl max-w-lg w-full p-6 text-white shadow-[0_0_50px_rgba(223,190,118,0.4)] relative">
               <button 
                 onClick={() => setShowRoiModal(false)}
                 className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800"
@@ -454,11 +483,9 @@ export default function HouseInteriorSection({
                 REQUEST CUSTOM INVESTMENT MANDATE →
               </button>
 
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
-
     </div>
   );
 }

@@ -138,7 +138,7 @@ function HolographicPedestal3D({ onOpenRoiModal }: { onOpenRoiModal: () => void 
   });
 
   return (
-    <group position={[0, -0.5, 0]} onClick={onOpenRoiModal} className="cursor-pointer">
+    <group position={[0, -0.5, 0]} onClick={onOpenRoiModal}>
       {/* Base Circular Ring */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[1.6, 1.8, 0.3, 32]} />
