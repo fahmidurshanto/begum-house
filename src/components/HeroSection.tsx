@@ -11,11 +11,13 @@ const AtmosphericDust = dynamic(() => import("./AtmosphericDust"), { ssr: false 
 interface HeroSectionProps {
   onSelectDivision: (division: Division) => void;
   onOpenConsultation: (preselectedDivision?: string) => void;
+  onEnterHouse?: () => void;
 }
 
 export default function HeroSection({
   onSelectDivision,
   onOpenConsultation,
+  onEnterHouse,
 }: HeroSectionProps) {
   const [isEntering, setIsEntering] = useState(false);
 
@@ -43,17 +45,11 @@ export default function HeroSection({
     
     // 1. Wait for the zoom animation and screen blackout to finish
     setTimeout(() => {
-      const section = document.getElementById("our-house");
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth" });
+      if (onEnterHouse) {
+        onEnterHouse();
       }
-      
-      // 2. Wait for the scroll to complete, then fade the blackout away and reset state
-      // so if they scroll back up, the hero looks normal again.
-      setTimeout(() => {
-        setIsEntering(false);
-      }, 1000);
-    }, 1300);
+      setIsEntering(false);
+    }, 1200);
   };
 
   return (
