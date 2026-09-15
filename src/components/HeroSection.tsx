@@ -5,6 +5,7 @@ import Image from "next/image";
 import { DIVISIONS, Division } from "@/data/divisions";
 import dynamic from "next/dynamic";
 import { gsap } from "gsap";
+import { DoorOpen } from "lucide-react";
 
 const AtmosphericDust = dynamic(() => import("./AtmosphericDust"), { ssr: false });
 
@@ -97,18 +98,24 @@ export default function HeroSection({
           />
 
           {!isEntering && (
-            <div
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); handleDoorClick(); }}
-              className="absolute z-50 cursor-pointer"
+              className="absolute z-50 cursor-pointer group flex items-center justify-center px-6 py-2.5 rounded-full bg-transparent hover:bg-[#071526]/40 border border-[#DFBE76]/80 hover:border-[#DFBE76] shadow-[0_0_15px_rgba(223,190,118,0.3)] hover:shadow-[0_0_25px_rgba(223,190,118,0.7)] hover:scale-105 transition-all duration-300 backdrop-blur-xs"
               style={{
                 left: "50%",
                 top: "70%",
                 transform: "translate(-50%, -50%)",
-                width: "140px",
-                height: "200px"
               }}
-              title="Click Main Door to Enter"
-            />
+              title="Click to Enter Begum House"
+            >
+              <span
+                className="text-xs sm:text-sm font-serif font-bold text-[#DFBE76] group-hover:text-white tracking-[0.2em] uppercase text-center whitespace-nowrap transition-colors"
+                style={{ fontFamily: "var(--font-cinzel), var(--font-playfair), Georgia, serif" }}
+              >
+                ENTER
+              </span>
+            </button>
           )}
         </div>
       </div>
