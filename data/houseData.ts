@@ -23,6 +23,7 @@ export interface GlobalOpportunity {
 }
 
 export const SERVICE_ROOMS: ServiceRoom[] = [
+  // LEFT SIDE (3 Doors)
   {
     id: "shared-services",
     title: "Shared Services & Global Delivery",
@@ -31,8 +32,8 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     category: "Operations",
     badgeIcon: "Layers",
     color: "#C9A84C",
-    xPct: 18,
-    yPct: 58,
+    xPct: 16,
+    yPct: 62,
     zDepth: -50,
     keyMetrics: [
       { label: "Cost Reduction", value: "38%" },
@@ -49,8 +50,8 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     category: "Finance",
     badgeIcon: "TrendingUp",
     color: "#00D4FF",
-    xPct: 30,
-    yPct: 40,
+    xPct: 27,
+    yPct: 36,
     zDepth: -100,
     keyMetrics: [
       { label: "Audit Accuracy", value: "99.9%" },
@@ -60,6 +61,26 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     services: ["Corporate Restructuring", "Tax Optimization", "Automated Accounting", "Risk & Governance"]
   },
   {
+    id: "business-advisory",
+    title: "Business Advisory & Support",
+    shortDesc: "Strategic corporate growth, M&A guidance & market expansion.",
+    fullDesc: "C-suite strategic intelligence, cross-border corporate setup, merger & acquisition consulting, and scalable operational frameworks.",
+    category: "Strategy",
+    badgeIcon: "Briefcase",
+    color: "#F59E0B",
+    xPct: 37,
+    yPct: 76,
+    zDepth: 0,
+    keyMetrics: [
+      { label: "M&A Volume", value: "£450M+" },
+      { label: "Growth Acceleration", value: "3.2x Average" },
+      { label: "Advisory Team", value: "Senior Partners" }
+    ],
+    services: ["M&A Advisory", "Market Entry UK & Global", "Corporate Governance", "Funding Strategy"]
+  },
+
+  // RIGHT SIDE (4 Doors)
+  {
     id: "tech-ai",
     title: "Technology, AI & Web Development",
     shortDesc: "Next-gen WebGL, custom AI integrations, and enterprise software.",
@@ -67,9 +88,9 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     category: "Technology",
     badgeIcon: "Cpu",
     color: "#38BDF8",
-    xPct: 50,
-    yPct: 32,
-    zDepth: -200,
+    xPct: 63,
+    yPct: 76,
+    zDepth: 0,
     keyMetrics: [
       { label: "Speed Rating", value: "100/100" },
       { label: "AI Workflows", value: "50+ Deployed" },
@@ -85,8 +106,8 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     category: "Design",
     badgeIcon: "Compass",
     color: "#E2E8F0",
-    xPct: 70,
-    yPct: 40,
+    xPct: 73,
+    yPct: 36,
     zDepth: -100,
     keyMetrics: [
       { label: "Projects Built", value: "120+" },
@@ -103,8 +124,8 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     category: "Wellness",
     badgeIcon: "HeartPulse",
     color: "#EC4899",
-    xPct: 82,
-    yPct: 58,
+    xPct: 84,
+    yPct: 62,
     zDepth: -50,
     keyMetrics: [
       { label: "Satisfaction", value: "98%" },
@@ -114,24 +135,6 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     services: ["Executive Coaching", "Burnout Prevention", "Corporate Wellness Workshops", "1-on-1 Therapy"]
   },
   {
-    id: "business-advisory",
-    title: "Business Advisory & Support",
-    shortDesc: "Strategic corporate growth, M&A guidance & market expansion.",
-    fullDesc: "C-suite strategic intelligence, cross-border corporate setup, merger & acquisition consulting, and scalable operational frameworks.",
-    category: "Strategy",
-    badgeIcon: "Briefcase",
-    color: "#F59E0B",
-    xPct: 35,
-    yPct: 72,
-    zDepth: 0,
-    keyMetrics: [
-      { label: "M&A Volume", value: "£450M+" },
-      { label: "Growth Acceleration", value: "3.2x Average" },
-      { label: "Advisory Team", value: "Senior Partners" }
-    ],
-    services: ["M&A Advisory", "Market Entry UK & Global", "Corporate Governance", "Funding Strategy"]
-  },
-  {
     id: "education-training",
     title: "Education & Training",
     shortDesc: "Corporate leadership academies & specialized skill development.",
@@ -139,9 +142,9 @@ export const SERVICE_ROOMS: ServiceRoom[] = [
     category: "Education",
     badgeIcon: "GraduationCap",
     color: "#10B981",
-    xPct: 65,
-    yPct: 72,
-    zDepth: 0,
+    xPct: 91,
+    yPct: 40,
+    zDepth: -50,
     keyMetrics: [
       { label: "Professionals Trained", value: "15,000+" },
       { label: "Course Completion", value: "96%" },

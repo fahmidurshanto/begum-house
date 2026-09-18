@@ -94,34 +94,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 7 Room Pins */}
-              {SERVICE_ROOMS.map((room) => (
-                <div
-                  key={room.id}
-                  style={{ left: `${room.xPct}%`, top: `${room.yPct}%` }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
-                >
-                  <div className="group relative">
-                    <button
-                      onClick={() => setSelectedRoom(room)}
-                      className="relative flex items-center gap-2.5 px-3.5 py-2 rounded-full bg-[#faf6f0]/95 border-2 border-[#c5a869] text-[#1a1a2e] hover:bg-[#c5a869] hover:text-white hover:scale-110 shadow-xl transition-all duration-300 backdrop-blur-md cursor-pointer font-bold"
-                    >
-                      <span className="p-1 rounded-full bg-[#c5a869]/20 text-[#c5a869] group-hover:text-white">
-                        {renderBadgeIcon(room.badgeIcon)}
-                      </span>
-                      <span className="text-xs font-bold tracking-wide whitespace-nowrap">
-                        {room.title}
-                      </span>
-                      <ArrowUpRight className="w-3.5 h-3.5 text-[#c5a869] group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </button>
-
-                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-56 p-3 rounded-lg bg-[#faf6f0] border border-[#c5a869] text-[#2d3748] text-xs opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-300 shadow-2xl z-50">
-                      <p className="font-bold text-[#c5a869] mb-1">{room.category}</p>
-                      <p className="text-[11px] leading-relaxed text-[#4a5568]">{room.shortDesc}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
 
               {/* Bottom Quick Bar */}
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-6 px-6 py-3 rounded-full bg-[#faf6f0]/95 border border-[#c5a869]/50 text-xs text-[#1a1a2e] font-bold backdrop-blur-md shadow-xl pointer-events-auto">
