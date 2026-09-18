@@ -5,7 +5,6 @@ import { useHouseStore } from "@/store/useHouseStore";
 import { CrestHeader } from "@/components/CrestHeader";
 import { ClosedHouseHero } from "@/components/ClosedHouseHero";
 import { House3DScene } from "@/components/House3DScene";
-import { SectorCarousel } from "@/components/SectorCarousel";
 import { ROICalculatorModal } from "@/components/ROICalculatorModal";
 import { ServiceRoomModal } from "@/components/ServiceRoomModal";
 import { GlobalOpportunitiesModal } from "@/components/GlobalOpportunitiesModal";
@@ -54,7 +53,7 @@ function ScrollTracker() {
 }
 
 export default function HomePage() {
-  const { view, scrollProgress, returnToFacade, setSelectedRoom, setIsRoiModalOpen, setIsGlobalModalOpen } = useHouseStore();
+  const { view, scrollProgress, returnToFacade, returnToLobby, setSelectedRoom, setIsRoiModalOpen, setIsGlobalModalOpen } = useHouseStore();
 
   return (
     <SmoothScrollProvider>
@@ -73,6 +72,18 @@ export default function HomePage() {
           {/* Facade Text Overlay (Visible when at Facade level) */}
           {view === "FACADE" && <ClosedHouseHero />}
 
+          {/* Individual Room Control Bar (Visible when in ROOM view) */}
+          {view === "ROOM" && (
+            <div className="absolute top-24 left-6 z-30 pointer-events-auto">
+              <button
+                onClick={returnToLobby}
+                className="px-4 py-2 text-xs font-extrabold uppercase tracking-widest rounded bg-[#faf6f0]/90 text-[#1a1a2e] border border-[#c5a869] hover:bg-[#c5a869] hover:text-white transition-all backdrop-blur-md shadow-lg cursor-pointer"
+              >
+                ← Return to Lobby
+              </button>
+            </div>
+          )}
+
           {/* Atrium Hotspots Overlay (Visible when inside Atrium) */}
           {view === "ATRIUM" && (
             <div className="absolute inset-0 z-20 pointer-events-none">
@@ -80,7 +91,7 @@ export default function HomePage() {
               <div className="absolute top-24 left-6 z-30 flex items-center gap-4 pointer-events-auto">
                 <button
                   onClick={returnToFacade}
-                  className="px-4 py-2 text-xs font-extrabold uppercase tracking-widest rounded bg-[#faf6f0]/90 text-[#1a1a2e] border border-[#c5a869] hover:bg-[#c5a869] hover:text-white transition-all backdrop-blur-md shadow-lg"
+                  className="px-4 py-2 text-xs font-extrabold uppercase tracking-widest rounded bg-[#faf6f0]/90 text-[#1a1a2e] border border-[#c5a869] hover:bg-[#c5a869] hover:text-white transition-all backdrop-blur-md shadow-lg cursor-pointer"
                 >
                   ← Return to Facade
                 </button>
@@ -106,13 +117,6 @@ export default function HomePage() {
                   <Globe className="w-3.5 h-3.5 text-[#c5a869]" /> Global Opportunities
                 </button>
               </div>
-
-              {/* 3D Sector Coverflow Carousel Section */}
-              {scrollProgress > 0.7 && (
-                <div className="absolute bottom-0 left-0 right-0 z-40 pointer-events-auto bg-[#faf6f0]">
-                  <SectorCarousel />
-                </div>
-              )}
             </div>
           )}
 

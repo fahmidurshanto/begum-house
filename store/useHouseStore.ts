@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { ServiceRoom } from "@/data/houseData";
 
-export type AppView = "FACADE" | "ATRIUM";
+export type AppView = "FACADE" | "ATRIUM" | "ROOM";
 
 interface HouseStore {
   view: AppView;
@@ -17,6 +17,7 @@ interface HouseStore {
   setScrollProgress: (progress: number) => void;
   openHouse: () => void;
   returnToFacade: () => void;
+  returnToLobby: () => void;
   setSelectedRoom: (room: ServiceRoom | null) => void;
   setIsRoiModalOpen: (isOpen: boolean) => void;
   setIsGlobalModalOpen: (isOpen: boolean, tabId?: string) => void;
@@ -37,17 +38,16 @@ export const useHouseStore = create<HouseStore>((set) => ({
   setScrollProgress: (progress) =>
     set((state) => {
       let newView = state.view;
-      if (progress < 0.15) {
+      // Return to FACADE only if user scrolls all the way back up to top while in ATRIUM
+      if (progress < 0.05 && state.view === "ATRIUM") {
         newView = "FACADE";
-      } else {
-        newView = "ATRIUM";
       }
       return { scrollProgress: progress, view: newView };
     }),
 
   openHouse: () => {
-    // Instant seamless 3D camera fly-through transition without loader interrupts
-    set({ view: "ATRIUM", scrollProgress: 0.25 });
+    // Explicit click required to open facade doors and enter lobby
+    set({ view: "ATRIUM", scrollProgress: 0.15 });
   },
 
   returnToFacade: () => {
@@ -57,7 +57,17 @@ export const useHouseStore = create<HouseStore>((set) => ({
     set({ view: "FACADE", scrollProgress: 0, selectedRoom: null, isRoiModalOpen: false, isGlobalModalOpen: false });
   },
 
-  setSelectedRoom: (room) => set({ selectedRoom: room }),
+  returnToLobby: () => {
+    set({ view: "ATRIUM", selectedRoom: null, scrollProgress: 0.15 });
+  },
+
+  setSelectedRoom: (room) =>
+    set(() => {
+      if (room && room.id === "business-advisory") {
+        return { selectedRoom: room, view: "ROOM", scrollProgress: 0 };
+      }
+      return { selectedRoom: room };
+    }),
 
   setIsRoiModalOpen: (isOpen) => set({ isRoiModalOpen: isOpen }),
 

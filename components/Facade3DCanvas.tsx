@@ -139,11 +139,9 @@ function HighResFacadePlane({ isOpening, onOpen }: { isOpening: boolean; onOpen:
   texture.colorSpace = THREE.SRGBColorSpace;
   const viewport = useThree((state) => state.viewport);
 
-  const imgAspect = 1536 / 1024; // 1.5 aspect ratio
-  const vpAspect = viewport.width / viewport.height;
-
-  const width = vpAspect > imgAspect ? viewport.width : viewport.height * imgAspect;
-  const height = vpAspect > imgAspect ? viewport.width / imgAspect : viewport.height;
+  // 100% Full screen fill (no black bars, no cropping, fills screen edge-to-edge)
+  const width = viewport.width;
+  const height = viewport.height;
 
   // Shifted further left & recessed further backside into the doorway cavity
   const doorPosX = width * 0.095;
@@ -170,7 +168,7 @@ function HighResFacadePlane({ isOpening, onOpen }: { isOpening: boolean; onOpen:
   );
 }
 
-// 3. Camera Parallax Rig Perfectly Centered & Framed
+// 3. Fixed Camera Rig (No Mouse Movement)
 function FacadeCameraRig() {
   const { scrollProgress } = useHouseStore();
 
@@ -178,12 +176,9 @@ function FacadeCameraRig() {
     const targetZ = THREE.MathUtils.lerp(10, 4.0, Math.min(1, scrollProgress * 2));
     const targetY = THREE.MathUtils.lerp(0, -0.2, scrollProgress);
 
-    const mouseX = state.mouse.x * 0.35;
-    const mouseY = state.mouse.y * 0.2;
-
-    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, mouseX, 0.05);
-    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, targetY + mouseY, 0.05);
-    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.08);
+    state.camera.position.x = 0;
+    state.camera.position.y = targetY;
+    state.camera.position.z = targetZ;
 
     state.camera.lookAt(0, 0, 0);
   });

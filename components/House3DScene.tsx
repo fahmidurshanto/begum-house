@@ -38,7 +38,12 @@ function LobbyRoom3DDoor({
 }) {
   const leftDoorRef = useRef<THREE.Group>(null);
   const rightDoorRef = useRef<THREE.Group>(null);
+  const pointLightRef = useRef<THREE.PointLight>(null);
+  const bgMeshRef = useRef<THREE.MeshBasicMaterial>(null);
   const [hovered, setHovered] = React.useState(false);
+
+  // Animated light intensity state
+  const lightIntensityRef = useRef(0.8);
 
   useFrame((_, delta) => {
     const targetRot = isSelected || hovered ? 1.4 : 0;
@@ -54,6 +59,27 @@ function LobbyRoom3DDoor({
         rightDoorRef.current.rotation.y,
         targetRot,
         delta * 3.5
+      );
+    }
+
+    // Dynamic gradual lighting timing: start deep dim (0.05) and slowly illuminate to bright (6.0) as door opens
+    const targetIntensity = isSelected || hovered ? 6.0 : 0.05;
+    lightIntensityRef.current = THREE.MathUtils.lerp(
+      lightIntensityRef.current,
+      targetIntensity,
+      delta * 1.6 // Dramatic lighting buildup
+    );
+
+    if (pointLightRef.current) {
+      pointLightRef.current.intensity = lightIntensityRef.current;
+    }
+    if (bgMeshRef.current) {
+      bgMeshRef.current.opacity = THREE.MathUtils.mapLinear(
+        lightIntensityRef.current,
+        0.05,
+        6.0,
+        0.0,
+        0.9
       );
     }
   });
@@ -78,16 +104,16 @@ function LobbyRoom3DDoor({
       {/* 2. Warm Illuminated Interior Portal Void */}
       <mesh position={[0, 0, -0.01]}>
         <boxGeometry args={[0.98, 0.98, 0.02]} />
-        <meshBasicMaterial color={hovered || isSelected ? "#fff5e6" : "#071322"} transparent opacity={hovered || isSelected ? 0.7 : 0.25} />
+        <meshBasicMaterial ref={bgMeshRef} color="#ffedd5" transparent opacity={0.0} />
       </mesh>
-      <pointLight position={[0, 0, 0.2]} color="#ffeed0" intensity={hovered || isSelected ? 3.5 : 1.2} distance={3.0} />
+      <pointLight ref={pointLightRef} position={[0, 0, 0.2]} color="#ffeed0" intensity={0.05} distance={3.5} />
 
       {/* 3. Left Crystal Clear Glass Door Panel */}
       <group ref={leftDoorRef} position={[-0.49, 0, 0.01]}>
-        {/* Transparent Dark Navy Tinted Glass */}
+        {/* Transparent Dark Tinted Glass */}
         <mesh position={[0.245, 0, 0]}>
           <boxGeometry args={[0.49, 0.97, 0.01]} />
-          <meshStandardMaterial color="#0b1528" roughness={0.1} metalness={0.9} transparent opacity={0.4} />
+          <meshStandardMaterial color="#000000" roughness={0.1} metalness={0.9} transparent opacity={0.85} />
         </mesh>
         {/* Subtle Gold Outer Border Line */}
         <mesh position={[0.245, 0, 0.008]}>
@@ -103,10 +129,10 @@ function LobbyRoom3DDoor({
 
       {/* 4. Right Crystal Clear Glass Door Panel */}
       <group ref={rightDoorRef} position={[0.49, 0, 0.01]}>
-        {/* Transparent Dark Navy Tinted Glass */}
+        {/* Transparent Dark Tinted Glass */}
         <mesh position={[-0.245, 0, 0]}>
           <boxGeometry args={[0.49, 0.97, 0.01]} />
-          <meshStandardMaterial color="#0b1528" roughness={0.1} metalness={0.9} transparent opacity={0.4} />
+          <meshStandardMaterial color="#000000" roughness={0.1} metalness={0.9} transparent opacity={0.85} />
         </mesh>
         {/* Subtle Gold Outer Border Line */}
         <mesh position={[-0.245, 0, 0.008]}>
@@ -121,18 +147,18 @@ function LobbyRoom3DDoor({
       </group>
 
       {/* 5. Door Header Mounted Sleek Gold Service Plaque (Sticky Glued to Top Arch Frame) */}
-      <Html position={[0, 0.53, 0.05]} center distanceFactor={8.5}>
+      <Html position={[0, 0.53, 0.05]} center distanceFactor={6.2}>
         <button
           onClick={onSelect}
-          className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border transition-all duration-300 shadow-2xl cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-full border-2 transition-all duration-300 shadow-2xl cursor-pointer whitespace-nowrap ${
             hovered || isSelected
               ? "bg-[#c5a869] border-white text-[#071322] scale-110 shadow-[#c5a869]/60"
-              : "bg-[#071322]/95 border-[#c5a869]/80 text-slate-100"
+              : "bg-[#071322]/95 border-[#c5a869] text-slate-100"
           }`}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#c5a869] animate-pulse" />
-          <span className="text-[9px] font-extrabold tracking-wider uppercase">{room.title}</span>
-          <ChevronRight className="w-2.5 h-2.5 text-[#c5a869] group-hover:text-[#071322]" />
+          <span className="w-2 h-2 rounded-full bg-[#c5a869] animate-pulse" />
+          <span className="text-[13px] font-black tracking-widest uppercase text-white drop-shadow-md">{room.title}</span>
+          <ChevronRight className="w-3.5 h-3.5 text-[#c5a869] group-hover:text-[#071322]" />
         </button>
       </Html>
     </group>
@@ -164,16 +190,33 @@ function LobbyArtworkPlane({
   const texture = useTexture("/sources/lobby.png");
   texture.colorSpace = THREE.SRGBColorSpace;
   const viewport = useThree((state) => state.viewport);
+  const { scrollProgress } = useHouseStore();
 
-  const imgAspect = 1215 / 1295; // 0.938 aspect ratio
-  const vpAspect = viewport.width / viewport.height;
+  const groupRef = useRef<THREE.Group>(null);
 
-  // Responsive full-screen background cover calculation
-  const scaleX = vpAspect > imgAspect ? viewport.width * 1.35 : viewport.height * imgAspect * 1.35;
-  const scaleY = vpAspect > imgAspect ? (viewport.width / imgAspect) * 1.35 : viewport.height * 1.35;
+  // Deep zoom scaling from 1.0x up to 1.85x
+  const zoomFactor = 1.0 + Math.min(1, scrollProgress * 0.85);
+  const scaleX = viewport.width * zoomFactor;
+  const scaleY = viewport.height * zoomFactor;
+
+  // Maximum pan offsets allowed without exposing screen edges
+  const maxPanX = (scaleX - viewport.width) / 2;
+  const maxPanY = (scaleY - viewport.height) / 2;
+
+  useFrame((state, delta) => {
+    // Vertical scroll pan from upper balconies to lower ground suites
+    const targetY = THREE.MathUtils.clamp((scrollProgress - 0.4) * maxPanY * 1.2, -maxPanY, maxPanY);
+    // Horizontal mouse cursor pan across the lobby artwork
+    const targetX = THREE.MathUtils.clamp(-state.mouse.x * maxPanX * 0.8, -maxPanX, maxPanX);
+
+    if (groupRef.current) {
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, delta * 5.0);
+      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, delta * 5.0);
+    }
+  });
 
   return (
-    <group position={[0, 0, -4]}>
+    <group ref={groupRef} position={[0, 0, 0]}>
       {/* Full-Bleed 100% Screen Background Artwork Mesh */}
       <mesh position={[0, 0, 0]} scale={[scaleX, scaleY, 1]}>
         <planeGeometry args={[1, 1]} />
@@ -201,11 +244,64 @@ function LobbyArtworkPlane({
           />
         );
       })}
+
+      {/* Sticky Glued Central Global Opportunities Globe & Hotspot */}
+      <CentralGlobalOpportunitiesMesh
+        position={[0, -0.15 * scaleY, 0.02]}
+        onSelect={() => useHouseStore.getState().setIsGlobalModalOpen(true)}
+      />
     </group>
   );
 }
 
-// 3. Facade Interactive 3D Opening Double Door Component (100% Pixel-Perfect Alignment with Artwork)
+// 3. Central Sticky Global Opportunities Hotspot Mesh Component
+function CentralGlobalOpportunitiesMesh({
+  position,
+  onSelect,
+}: {
+  position: [number, number, number];
+  onSelect: () => void;
+}) {
+  const meshRef = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+
+  useFrame((_, delta) => {
+    if (meshRef.current) meshRef.current.rotation.y += delta * 0.4;
+    if (ringRef.current) ringRef.current.rotation.z -= delta * 0.8;
+  });
+
+  return (
+    <group position={position} onClick={onSelect}>
+      {/* Base Ring */}
+      <mesh ref={ringRef} position={[0, -0.1, 0]} rotation-x={Math.PI / 2}>
+        <ringGeometry args={[0.3, 0.45, 32]} />
+        <meshBasicMaterial color="#c5a869" wireframe />
+      </mesh>
+
+      {/* Rotating Gold Wireframe Globe */}
+      <group ref={meshRef} position={[0, 0.25, 0]}>
+        <mesh>
+          <sphereGeometry args={[0.35, 20, 20]} />
+          <meshBasicMaterial color="#c5a869" wireframe transparent opacity={0.85} />
+        </mesh>
+      </group>
+
+      <pointLight color="#c5a869" intensity={3.5} distance={4} />
+
+      <Html position={[0, 0.65, 0]} center distanceFactor={8.5}>
+        <button
+          onClick={onSelect}
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#071322]/95 border-2 border-[#c5a869] text-[#c5a869] text-xs font-extrabold uppercase tracking-widest shadow-[0_0_25px_rgba(197,168,105,0.6)] hover:scale-110 transition-transform cursor-pointer whitespace-nowrap"
+        >
+          <Globe className="w-4 h-4 text-[#c5a869] animate-spin-slow" />
+          <span>Global Opportunities</span>
+        </button>
+      </Html>
+    </group>
+  );
+}
+
+// 4. Facade Interactive 3D Opening Double Door Component (100% Pixel-Perfect Alignment with Artwork)
 function FacadeEntrance3DDoor({
   position,
   scale,
@@ -341,18 +437,15 @@ function FacadeEntrance3DDoor({
   );
 }
 
-// 4. Facade High-Resolution Artwork Texture Plane (`home_page_hero.png`)
+// 5. Facade High-Resolution Artwork Texture Plane (`home_page_hero.png`)
 function HighResFacadePlane({ isOpening, onOpen }: { isOpening: boolean; onOpen: () => void }) {
   const texture = useTexture("/sources/home_page_hero.png");
   texture.colorSpace = THREE.SRGBColorSpace;
   const viewport = useThree((state) => state.viewport);
 
-  const imgAspect = 1536 / 1024; // 1.5 aspect ratio
-  const vpAspect = viewport.width / viewport.height;
-  
-  // Responsive background cover calculation
-  const width = vpAspect > imgAspect ? viewport.width : viewport.height * imgAspect;
-  const height = vpAspect > imgAspect ? viewport.width / imgAspect : viewport.height;
+  // 100% Full screen fill (no black bars, no cropping, fills screen edge-to-edge)
+  const width = viewport.width;
+  const height = viewport.height;
 
   // Shifted further left & recessed further backside into the doorway cavity
   const doorPosX = width * 0.095;
@@ -379,128 +472,146 @@ function HighResFacadePlane({ isOpening, onOpen }: { isOpening: boolean; onOpen:
   );
 }
 
-// 4. 3D Hologram Kiosk Mesh
-function HologramKioskMesh({ isVisible, onSelect }: { isVisible: boolean; onSelect: () => void }) {
-  const meshRef = useRef<THREE.Group>(null);
-  const ringRef = useRef<THREE.Mesh>(null);
+// 6. Individual Service Room 3D Scene Plane (`room.png`)
+function IndividualRoomPlane({ room }: { room: ServiceRoom }) {
+  const texture = useTexture("/sources/room.png");
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const viewport = useThree((state) => state.viewport);
+  const { scrollProgress } = useHouseStore();
 
-  useFrame((_, delta) => {
-    if (meshRef.current) meshRef.current.rotation.y += delta * 0.4;
-    if (ringRef.current) ringRef.current.rotation.z -= delta * 0.8;
-  });
+  const groupRef = useRef<THREE.Group>(null);
 
-  if (!isVisible) return null;
+  // Deep zoom scaling from 1.0x up to 1.75x
+  const zoomFactor = 1.0 + Math.min(1, scrollProgress * 0.75);
+  const scaleX = viewport.width * zoomFactor;
+  const scaleY = viewport.height * zoomFactor;
 
-  return (
-    <group position={[0, -1.2, -2.8]} onClick={onSelect}>
-      <mesh position={[0, -0.4, 0]}>
-        <cylinderGeometry args={[1.2, 1.4, 0.4, 32]} />
-        <meshStandardMaterial color="#1a1a2e" roughness={0.2} metalness={0.8} />
-      </mesh>
+  // Maximum pan offsets allowed without exposing screen edges
+  const maxPanX = (scaleX - viewport.width) / 2;
+  const maxPanY = (scaleY - viewport.height) / 2;
 
-      <mesh ref={ringRef} position={[0, -0.15, 0]} rotation-x={Math.PI / 2}>
-        <ringGeometry args={[0.9, 1.1, 32]} />
-        <meshBasicMaterial color="#00d4ff" wireframe />
-      </mesh>
+  useFrame((state, delta) => {
+    // Vertical scroll pan down the room
+    const targetY = THREE.MathUtils.clamp((scrollProgress - 0.4) * maxPanY * 1.2, -maxPanY, maxPanY);
+    // Horizontal mouse cursor pan across the room
+    const targetX = THREE.MathUtils.clamp(-state.mouse.x * maxPanX * 0.8, -maxPanX, maxPanX);
 
-      <group ref={meshRef} position={[0, 0.3, 0]}>
-        {[0, 1, 2, 3].map((i) => (
-          <mesh key={i} position={[(i - 1.5) * 0.3, 0.4, 0]}>
-            <boxGeometry args={[0.15, 0.8, 0.15]} />
-            <meshBasicMaterial color="#00d4ff" transparent opacity={0.85} />
-          </mesh>
-        ))}
-      </group>
-
-      <pointLight color="#00d4ff" intensity={4} distance={6} />
-
-      <Html position={[0, 1.4, 0]} center distanceFactor={12}>
-        <button
-          onClick={onSelect}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#1a1a2e] border border-[#00d4ff] text-[#00d4ff] text-xs font-bold uppercase tracking-widest shadow-2xl hover:scale-105 transition-transform"
-        >
-          <Calculator className="w-4 h-4 animate-bounce text-[#00d4ff]" />
-          <span>ROI Hologram Kiosk</span>
-        </button>
-      </Html>
-    </group>
-  );
-}
-
-// 5. 3D Globe
-function AtriumGlobeMesh({ isVisible, onSelect }: { isVisible: boolean; onSelect: () => void }) {
-  const globeRef = useRef<THREE.Mesh>(null);
-
-  useFrame((_, delta) => {
-    if (globeRef.current) globeRef.current.rotation.y += delta * 0.3;
-  });
-
-  if (!isVisible) return null;
-
-  return (
-    <group position={[0, 2.5, -6.0]} onClick={onSelect}>
-      <mesh ref={globeRef}>
-        <sphereGeometry args={[1.2, 24, 24]} />
-        <meshBasicMaterial color="#c5a869" wireframe transparent opacity={0.85} />
-      </mesh>
-      <pointLight color="#c5a869" intensity={3.5} distance={6} />
-
-      <Html position={[0, 1.5, 0]} center distanceFactor={12}>
-        <button
-          onClick={onSelect}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#faf6f0] border border-[#c5a869] text-[#1a1a2e] text-xs font-bold uppercase tracking-widest hover:scale-105 transition-transform backdrop-blur-md shadow-xl"
-        >
-          <Globe className="w-4 h-4 text-[#c5a869] animate-spin-slow" />
-          <span>Global Opportunities</span>
-        </button>
-      </Html>
-    </group>
-  );
-}
-
-// Camera Rig
-function SeamlessCameraRig() {
-  const { view, scrollProgress } = useHouseStore();
-
-  useFrame((state) => {
-    let targetZ = 10;
-    let targetY = 0;
-
-    if (view === "ATRIUM") {
-      // Smooth 3D corridor scroll zoom-in from 8.5 down to -1.0
-      targetZ = THREE.MathUtils.lerp(8.5, -1.0, Math.min(1, scrollProgress * 1.2));
-      targetY = THREE.MathUtils.lerp(-0.45, -0.15, scrollProgress);
+    if (groupRef.current) {
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, delta * 5.0);
+      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, delta * 5.0);
     }
+  });
 
-    const mouseX = state.mouse.x * 0.35;
-    const mouseY = state.mouse.y * 0.2;
+  // Center of the large gold-framed dark wall display in room.png (below OUR SERVICE header)
+  const boardX = 0;
+  const boardY = -0.05;
 
-    state.camera.position.x = THREE.MathUtils.lerp(state.camera.position.x, mouseX, 0.05);
-    state.camera.position.y = THREE.MathUtils.lerp(state.camera.position.y, targetY + mouseY, 0.05);
-    state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.06);
+  return (
+    <group ref={groupRef} position={[0, 0, 0]}>
+      {/* Background Room Artwork Plane */}
+      <mesh position={[0, 0, 0]} scale={[scaleX, scaleY, 1]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial map={texture} />
+      </mesh>
 
+      {/* Crisp 100% Pixel-Perfect Data Content Pinned Directly onto the Central Blackboard Surface */}
+      <Html
+        position={[boardX, boardY, 0.02]}
+        center
+        distanceFactor={7.5}
+      >
+        <div className="w-[720px] sm:w-[840px] text-slate-100 space-y-3 font-sans pointer-events-auto bg-transparent border-0 shadow-none px-4 select-none">
+          {/* Top Sub-Header Bar (Below 'OUR SERVICE') */}
+          <div className="flex items-center justify-between pb-2 border-b border-[#c5a869]/30">
+            <span className="text-xs font-mono tracking-widest text-[#c5a869] uppercase font-bold">
+              {room.category || "STRATEGY"}
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00d4ff]/10 border border-[#00d4ff]/40 text-[#00d4ff] text-[10px] font-mono font-bold tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00d4ff] animate-pulse" />
+              LIVE DATA
+            </span>
+          </div>
+
+          {/* Main 2-Column Content Grid */}
+          <div className="grid grid-cols-12 gap-8 items-start pt-1">
+            {/* Left Column (5/12) */}
+            <div className="col-span-5 space-y-3 pr-2">
+              <h2 className="text-3xl font-serif font-bold text-[#f4ecd8] leading-tight tracking-wide drop-shadow">
+                {room.title}
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed font-normal">
+                {room.fullDesc || room.shortDesc}
+              </p>
+
+              {/* Gold Line with Glowing Circular Node */}
+              <div className="relative py-2 flex items-center">
+                <div className="w-full h-[1px] bg-gradient-to-r from-[#c5a869]/60 via-[#c5a869] to-transparent" />
+                <div className="absolute right-4 w-5 h-5 rounded-full border border-[#c5a869] bg-[#071322] flex items-center justify-center shadow-[0_0_10px_#c5a869]">
+                  <div className="w-2 h-2 rounded-full bg-[#c5a869]" />
+                </div>
+              </div>
+
+              {/* Key Performance Metric */}
+              <div className="space-y-0.5">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-[#c5a869] block font-bold">
+                  KEY PERFORMANCE METRIC
+                </span>
+                <span className="text-sm font-mono text-[#00d4ff] font-extrabold block">
+                  {room.keyMetrics && room.keyMetrics.length > 0
+                    ? `${room.keyMetrics[0].label}: ${room.keyMetrics[0].value}`
+                    : "M&A Volume: £450M+"}
+                </span>
+              </div>
+            </div>
+
+            {/* Right Column (7/12) */}
+            <div className="col-span-7 space-y-4 pl-4 border-l border-[#c5a869]/30 min-h-[220px] flex flex-col justify-between">
+              <div className="space-y-3">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-[#c5a869] block font-bold">
+                  CORE STRATEGIC CAPABILITIES:
+                </span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {(room.services || []).slice(0, 4).map((service: string, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 bg-[#05101e]/80 px-3 py-2.5 rounded-lg border border-[#c5a869]/40 backdrop-blur-sm"
+                    >
+                      <span className="text-[#c5a869] text-xs">◆</span>
+                      <span className="text-xs font-semibold text-slate-100 truncate">{service}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Consult Advisory Button */}
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => useHouseStore.getState().setIsRoiModalOpen(true)}
+                  className="px-6 py-2.5 rounded-full bg-[#c5a869] text-[#071322] text-xs font-black tracking-widest uppercase hover:bg-white hover:scale-105 transition-all shadow-[0_0_20px_rgba(197,168,105,0.4)] cursor-pointer"
+                >
+                  CONSULT ADVISORY
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// Fixed Camera Rig (Camera stays locked at [0, 0, 10] - zero 3D camera translation)
+function SeamlessCameraRig() {
+  useFrame((state) => {
+    state.camera.position.set(0, 0, 10);
     state.camera.lookAt(0, 0, 0);
   });
   return null;
 }
 
-const LOBBY_DOOR_POSITIONS: { id: string; pos: [number, number, number]; scale?: [number, number, number] }[] = [
-  // LEFT WING BOOTHS
-  { id: "shared-services", pos: [-6.4, -0.6, -3.6], scale: [0.65, 0.75, 0.65] },
-  { id: "finance-ops", pos: [-4.2, 1.6, -3.8], scale: [0.6, 0.7, 0.6] },
-  { id: "business-advisory", pos: [-3.8, -0.6, -3.6], scale: [0.65, 0.75, 0.65] },
-
-  // RIGHT WING BOOTHS
-  { id: "tech-ai", pos: [3.8, -0.6, -3.6], scale: [0.65, 0.75, 0.65] },
-  { id: "architecture-design", pos: [4.2, 1.6, -3.8], scale: [0.6, 0.7, 0.6] },
-  { id: "mental-health", pos: [6.4, -0.6, -3.6], scale: [0.65, 0.75, 0.65] },
-  { id: "education-training", pos: [6.8, 1.6, -3.8], scale: [0.6, 0.7, 0.6] },
-];
-
 export const House3DScene: React.FC = () => {
-  const { view, scrollProgress, openHouse, selectedRoom, setSelectedRoom, setIsRoiModalOpen, setIsGlobalModalOpen } = useHouseStore();
-  const isDoorsOpen = view === "ATRIUM" || scrollProgress > 0.1;
-  const isInside = view === "ATRIUM" || scrollProgress > 0.2;
+  const { view, openHouse, selectedRoom, setSelectedRoom } = useHouseStore();
+  const isDoorsOpen = view === "ATRIUM";
 
   return (
     <div className="absolute inset-0 z-0 overflow-hidden bg-[#040b14]">
@@ -512,15 +623,16 @@ export const House3DScene: React.FC = () => {
         <Sparkles count={150} scale={20} size={3.5} speed={0.35} color="#c5a869" />
 
         <Suspense fallback={null}>
-          {!isInside ? (
+          {view === "FACADE" && (
             <HighResFacadePlane isOpening={isDoorsOpen} onOpen={openHouse} />
-          ) : (
+          )}
+          {view === "ATRIUM" && (
             <LobbyArtworkPlane selectedRoom={selectedRoom} setSelectedRoom={setSelectedRoom} />
           )}
+          {view === "ROOM" && selectedRoom && (
+            <IndividualRoomPlane room={selectedRoom} />
+          )}
         </Suspense>
-
-        <HologramKioskMesh isVisible={isInside} onSelect={() => setIsRoiModalOpen(true)} />
-        <AtriumGlobeMesh isVisible={isInside} onSelect={() => setIsGlobalModalOpen(true)} />
       </Canvas>
     </div>
   );
