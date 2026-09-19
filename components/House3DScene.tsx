@@ -92,8 +92,14 @@ function LobbyRoom3DDoor({
         e.stopPropagation();
         onSelect();
       }}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
+      onPointerOver={() => {
+        setHovered(true);
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        document.body.style.cursor = "auto";
+      }}
     >
       {/* 1. Thin Polished Gold Outer Frame Trim */}
       <mesh position={[0, 0, 0]}>
@@ -343,8 +349,14 @@ function FacadeEntrance3DDoor({
         e.stopPropagation();
         onOpen();
       }}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
+      onPointerOver={() => {
+        setHovered(true);
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        document.body.style.cursor = "auto";
+      }}
     >
       {/* 1. Polished Gold Outer Archway Frame */}
       <mesh position={[0, 0, 0]}>

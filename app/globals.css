@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 @layer base {
+  html, body, button, a, canvas, input, select, div {
+    cursor: none !important;
+  }
+
   body {
     background-color: #faf6f0;
     color: #1a1a2e;

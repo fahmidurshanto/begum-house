@@ -1,29 +1,67 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
+import { gsap } from "gsap";
 
 export const RefinedCursor: React.FC = () => {
-  const [position, setPosition] = useState({ x: -100, y: -100 });
-  const [trailingPos, setTrailingPos] = useState({ x: -100, y: -100 });
-  const [isHovered, setIsHovered] = useState(false);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const auraRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!cursorRef.current || !auraRef.current) return;
+
+    // Create GSAP quickTo setters for ultra-smooth 60fps tracking
+    const xToCursor = gsap.quickTo(cursorRef.current, "x", { duration: 0.08, ease: "power3.out" });
+    const yToCursor = gsap.quickTo(cursorRef.current, "y", { duration: 0.08, ease: "power3.out" });
+
+    const xToAura = gsap.quickTo(auraRef.current, "x", { duration: 0.22, ease: "power2.out" });
+    const yToAura = gsap.quickTo(auraRef.current, "y", { duration: 0.22, ease: "power2.out" });
+
     const handleMouseMove = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
+      xToCursor(e.clientX);
+      yToCursor(e.clientY);
+      xToAura(e.clientX);
+      yToAura(e.clientY);
     };
 
     const handleMouseOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (
+      const isInteractive =
         target.tagName === "BUTTON" ||
         target.tagName === "A" ||
         target.closest("button") ||
         target.closest("a") ||
-        target.getAttribute("role") === "button"
-      ) {
-        setIsHovered(true);
+        target.getAttribute("role") === "button" ||
+        document.body.style.cursor === "pointer";
+
+      if (isInteractive) {
+        gsap.to(cursorRef.current, {
+          scale: 1.35,
+          rotation: -8,
+          duration: 0.3,
+          ease: "back.out(1.7)",
+        });
+        gsap.to(auraRef.current, {
+          scale: 1.6,
+          opacity: 0.9,
+          borderColor: "#00d4ff",
+          backgroundColor: "rgba(0, 212, 255, 0.15)",
+          duration: 0.3,
+        });
       } else {
-        setIsHovered(false);
+        gsap.to(cursorRef.current, {
+          scale: 1.0,
+          rotation: 0,
+          duration: 0.3,
+          ease: "power2.out",
+        });
+        gsap.to(auraRef.current, {
+          scale: 1.0,
+          opacity: 0.6,
+          borderColor: "rgba(197, 168, 105, 0.5)",
+          backgroundColor: "transparent",
+          duration: 0.3,
+        });
       }
     };
 
@@ -36,42 +74,24 @@ export const RefinedCursor: React.FC = () => {
     };
   }, []);
 
-  // Smooth lag trailing effect
-  useEffect(() => {
-    let animationFrameId: number;
-
-    const follow = () => {
-      setTrailingPos((prev) => ({
-        x: prev.x + (position.x - prev.x) * 0.15,
-        y: prev.y + (position.y - prev.y) * 0.15,
-      }));
-      animationFrameId = requestAnimationFrame(follow);
-    };
-
-    animationFrameId = requestAnimationFrame(follow);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [position]);
-
   return (
     <>
-      {/* Inner Dot Cursor */}
+      {/* GSAP-Animated Hand PNG Cursor */}
       <div
-        style={{
-          transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-        }}
-        className="fixed top-0 left-0 w-2.5 h-2.5 rounded-full bg-[#c5a869] pointer-events-none z-[100] -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 shadow-[0_0_10px_#c5a869]"
-      />
+        ref={cursorRef}
+        className="fixed top-0 left-0 pointer-events-none z-[9999] -translate-x-1/2 -translate-y-1/2 select-none"
+      >
+        <img
+          src="/sources/hand.png"
+          alt="Custom Hand Cursor"
+          className="w-24 h-24 object-contain drop-shadow-[0_0_18px_rgba(197,168,105,0.95)]"
+        />
+      </div>
 
-      {/* Outer Ring Trailing Cursor */}
+      {/* GSAP-Animated Trailing Aura Ring */}
       <div
-        style={{
-          transform: `translate3d(${trailingPos.x}px, ${trailingPos.y}px, 0) scale(${isHovered ? 1.6 : 1})`,
-        }}
-        className={`fixed top-0 left-0 w-8 h-8 rounded-full border pointer-events-none z-[99] -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${
-          isHovered
-            ? "border-[#00d4ff] bg-[#00d4ff]/10 shadow-[0_0_20px_rgba(0,212,255,0.4)]"
-            : "border-[#c5a869]/60 bg-transparent shadow-[0_0_10px_rgba(197,168,105,0.2)]"
-        }`}
+        ref={auraRef}
+        className="fixed top-0 left-0 w-24 h-24 rounded-full border border-[#c5a869]/50 bg-transparent pointer-events-none z-[9998] -translate-x-1/2 -translate-y-1/2 select-none"
       />
     </>
   );
