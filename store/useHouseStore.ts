@@ -36,18 +36,18 @@ export const useHouseStore = create<HouseStore>((set) => ({
   setView: (view) => set({ view }),
 
   setScrollProgress: (progress) =>
-    set((state) => {
-      let newView = state.view;
-      // Return to FACADE only if user scrolls all the way back up to top while in ATRIUM
-      if (progress < 0.05 && state.view === "ATRIUM") {
-        newView = "FACADE";
-      }
-      return { scrollProgress: progress, view: newView };
+    set(() => {
+      // Clamped strictly between 0.0 and 1.0 for fixed, predictable 3D corridor panning
+      const clamped = Math.max(0, Math.min(1, progress));
+      return { scrollProgress: clamped };
     }),
 
   openHouse: () => {
-    // Explicit click required to open facade doors and enter lobby
-    set({ view: "ATRIUM", scrollProgress: 0.15 });
+    // Reset scroll to top on enter so forward scroll starts at 0% depth
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+    set({ view: "ATRIUM", scrollProgress: 0 });
   },
 
   returnToFacade: () => {
@@ -58,7 +58,7 @@ export const useHouseStore = create<HouseStore>((set) => ({
   },
 
   returnToLobby: () => {
-    set({ view: "ATRIUM", selectedRoom: null, scrollProgress: 0.15 });
+    set({ view: "ATRIUM", selectedRoom: null, scrollProgress: 0 });
   },
 
   setSelectedRoom: (room) =>

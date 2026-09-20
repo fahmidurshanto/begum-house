@@ -22,7 +22,7 @@ const renderBadgeIcon = (iconName: string) => {
   }
 };
 
-// 1. Sleek Crystal Clear Glass & Gold 3D Door for Each Service Room in Lobby
+// 1. Sleek Crystal Clear Glass & Monochrome 3D Door for Each Service Room in Lobby
 function LobbyRoom3DDoor({
   room,
   position,
@@ -42,45 +42,51 @@ function LobbyRoom3DDoor({
   const bgMeshRef = useRef<THREE.MeshBasicMaterial>(null);
   const [hovered, setHovered] = React.useState(false);
 
-  // Animated light intensity state
-  const lightIntensityRef = useRef(0.8);
+  // Smooth animation progress from 0 (closed) to 1 (fully open)
+  const openProgressRef = useRef(0);
+
+  // Colors for black-to-gray portal transition (pure monochrome gradient)
+  const pitchBlackColor = useRef(new THREE.Color("#000000"));
+  const glowGrayColor = useRef(new THREE.Color("#9ca3af")); // Sleek architectural gray
 
   useFrame((_, delta) => {
-    const targetRot = isSelected || hovered ? 1.4 : 0;
-    if (leftDoorRef.current) {
-      leftDoorRef.current.rotation.y = THREE.MathUtils.lerp(
-        leftDoorRef.current.rotation.y,
-        -targetRot,
-        delta * 3.5
-      );
-    }
-    if (rightDoorRef.current) {
-      rightDoorRef.current.rotation.y = THREE.MathUtils.lerp(
-        rightDoorRef.current.rotation.y,
-        targetRot,
-        delta * 3.5
-      );
-    }
+    const active = isSelected || hovered;
+    const targetProgress = active ? 1.0 : 0.0;
 
-    // Dynamic gradual lighting timing: start deep dim (0.05) and slowly illuminate to bright (6.0) as door opens
-    const targetIntensity = isSelected || hovered ? 6.0 : 0.05;
-    lightIntensityRef.current = THREE.MathUtils.lerp(
-      lightIntensityRef.current,
-      targetIntensity,
-      delta * 1.6 // Dramatic lighting buildup
+    openProgressRef.current = THREE.MathUtils.damp(
+      openProgressRef.current,
+      targetProgress,
+      2.8,
+      delta
     );
 
-    if (pointLightRef.current) {
-      pointLightRef.current.intensity = lightIntensityRef.current;
+    const progress = openProgressRef.current;
+    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    const maxRot = 1.4;
+
+    if (leftDoorRef.current) {
+      leftDoorRef.current.rotation.y = -easedProgress * maxRot;
     }
+    if (rightDoorRef.current) {
+      rightDoorRef.current.rotation.y = easedProgress * maxRot;
+    }
+
+    // Delayed gradual lighting curve:
+    // 100% pitch black (#000000) at first (0% - 35%), then slowly illuminates from black to sleek gray (35% - 100%)
+    let lightProgress = 0;
+    if (progress > 0.35) {
+      const norm = Math.max(0, Math.min(1, (progress - 0.35) / 0.65));
+      lightProgress = Math.pow(norm, 2.2);
+    }
+
+    if (pointLightRef.current) {
+      pointLightRef.current.intensity = THREE.MathUtils.lerp(0.0, 8.0, lightProgress);
+      pointLightRef.current.distance = THREE.MathUtils.lerp(2.0, 4.5, lightProgress);
+    }
+
     if (bgMeshRef.current) {
-      bgMeshRef.current.opacity = THREE.MathUtils.mapLinear(
-        lightIntensityRef.current,
-        0.05,
-        6.0,
-        0.0,
-        0.9
-      );
+      bgMeshRef.current.color.lerpColors(pitchBlackColor.current, glowGrayColor.current, lightProgress);
+      bgMeshRef.current.opacity = THREE.MathUtils.lerp(0.0, 0.95, lightProgress);
     }
   });
 
@@ -101,18 +107,18 @@ function LobbyRoom3DDoor({
         document.body.style.cursor = "auto";
       }}
     >
-      {/* 1. Thin Polished Gold Outer Frame Trim */}
+      {/* 1. Thin Outer Frame Trim */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[1.04, 1.04, 0.02]} />
         <meshBasicMaterial color="#c5a869" wireframe />
       </mesh>
 
-      {/* 2. Warm Illuminated Interior Portal Void */}
+      {/* 2. Black to Gray Interior Portal Void (Starts pitch black) */}
       <mesh position={[0, 0, -0.01]}>
         <boxGeometry args={[0.98, 0.98, 0.02]} />
-        <meshBasicMaterial ref={bgMeshRef} color="#ffedd5" transparent opacity={0.0} />
+        <meshBasicMaterial ref={bgMeshRef} color="#000000" transparent opacity={0.0} />
       </mesh>
-      <pointLight ref={pointLightRef} position={[0, 0, 0.2]} color="#ffeed0" intensity={0.05} distance={3.5} />
+      <pointLight ref={pointLightRef} position={[0, 0, 0.2]} color="#f3f4f6" intensity={0.0} distance={3.5} />
 
       {/* 3. Left Crystal Clear Glass Door Panel */}
       <group ref={leftDoorRef} position={[-0.49, 0, 0.01]}>
@@ -121,12 +127,12 @@ function LobbyRoom3DDoor({
           <boxGeometry args={[0.49, 0.97, 0.01]} />
           <meshStandardMaterial color="#000000" roughness={0.1} metalness={0.9} transparent opacity={0.85} />
         </mesh>
-        {/* Subtle Gold Outer Border Line */}
+        {/* Subtle Outer Border Line */}
         <mesh position={[0.245, 0, 0.008]}>
           <boxGeometry args={[0.45, 0.93, 0.001]} />
           <meshBasicMaterial color="#c5a869" wireframe />
         </mesh>
-        {/* Vertical Brass Pull Handle */}
+        {/* Vertical Pull Handle */}
         <mesh position={[0.45, 0, 0.015]}>
           <cylinderGeometry args={[0.008, 0.008, 0.35, 16]} />
           <meshBasicMaterial color="#d4af37" />
@@ -140,19 +146,19 @@ function LobbyRoom3DDoor({
           <boxGeometry args={[0.49, 0.97, 0.01]} />
           <meshStandardMaterial color="#000000" roughness={0.1} metalness={0.9} transparent opacity={0.85} />
         </mesh>
-        {/* Subtle Gold Outer Border Line */}
+        {/* Subtle Outer Border Line */}
         <mesh position={[-0.245, 0, 0.008]}>
           <boxGeometry args={[0.45, 0.93, 0.001]} />
           <meshBasicMaterial color="#c5a869" wireframe />
         </mesh>
-        {/* Vertical Brass Pull Handle */}
+        {/* Vertical Pull Handle */}
         <mesh position={[-0.45, 0, 0.015]}>
           <cylinderGeometry args={[0.008, 0.008, 0.35, 16]} />
           <meshBasicMaterial color="#d4af37" />
         </mesh>
       </group>
 
-      {/* 5. Door Header Mounted Sleek Gold Service Plaque (Sticky Glued to Top Arch Frame) */}
+      {/* 5. Door Header Mounted Sleek Service Plaque */}
       <Html position={[0, 0.53, 0.05]} center distanceFactor={6.2}>
         <button
           onClick={onSelect}
@@ -199,6 +205,10 @@ function LobbyArtworkPlane({
   const { scrollProgress } = useHouseStore();
 
   const groupRef = useRef<THREE.Group>(null);
+  const darkOverlayMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  // Smooth progress for inside environment illumination: starts 1.0 (100% pitch black) on entry
+  const illuminationProgressRef = useRef(1.0);
 
   // Deep zoom scaling from 1.0x up to 1.85x
   const zoomFactor = 1.0 + Math.min(1, scrollProgress * 0.85);
@@ -210,14 +220,29 @@ function LobbyArtworkPlane({
   const maxPanY = (scaleY - viewport.height) / 2;
 
   useFrame((state, delta) => {
-    // Vertical scroll pan from upper balconies to lower ground suites
-    const targetY = THREE.MathUtils.clamp((scrollProgress - 0.4) * maxPanY * 1.2, -maxPanY, maxPanY);
-    // Horizontal mouse cursor pan across the lobby artwork
+    // 2-Axis Cursor Navigation: combines vertical scroll progress with mouse cursor Y position
+    const scrollYOffset = (scrollProgress - 0.5) * maxPanY * 1.5;
+    const cursorYOffset = -state.mouse.y * maxPanY * 0.8;
+    const targetY = THREE.MathUtils.clamp(scrollYOffset + cursorYOffset, -maxPanY, maxPanY);
+
+    // Horizontal mouse cursor pan across the lobby artwork (X-axis)
     const targetX = THREE.MathUtils.clamp(-state.mouse.x * maxPanX * 0.8, -maxPanX, maxPanX);
 
     if (groupRef.current) {
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, delta * 5.0);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, delta * 5.0);
+    }
+
+    // Inside environment slow illumination sequence: starts 100% pitch black and slowly damps down to 0.0 (full light)
+    illuminationProgressRef.current = THREE.MathUtils.damp(
+      illuminationProgressRef.current,
+      0.0,
+      1.6, // Slow, elegant illumination damp speed
+      delta
+    );
+
+    if (darkOverlayMaterialRef.current) {
+      darkOverlayMaterialRef.current.opacity = illuminationProgressRef.current;
     }
   });
 
@@ -256,6 +281,18 @@ function LobbyArtworkPlane({
         position={[0, -0.15 * scaleY, 0.02]}
         onSelect={() => useHouseStore.getState().setIsGlobalModalOpen(true)}
       />
+
+      {/* Inside Environment Pitch-Black Dark Veil Overlay - Starts 100% black and slowly damps down to 0.0 opacity */}
+      <mesh position={[0, 0, 0.1]} scale={[scaleX * 1.5, scaleY * 1.5, 1]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          ref={darkOverlayMaterialRef}
+          color="#000000"
+          transparent
+          opacity={1.0}
+          depthWrite={false}
+        />
+      </mesh>
     </group>
   );
 }
@@ -321,23 +358,55 @@ function FacadeEntrance3DDoor({
 }) {
   const leftDoorRef = useRef<THREE.Group>(null);
   const rightDoorRef = useRef<THREE.Group>(null);
+  const pointLightRef = useRef<THREE.PointLight>(null);
+  const bgMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const [hovered, setHovered] = React.useState(false);
 
+  // Smooth animation progress from 0 (closed) to 1 (fully open)
+  const openProgressRef = useRef(0);
+
+  // Colors for black-to-gray portal transition (pure monochrome gradient)
+  const pitchBlackColor = useRef(new THREE.Color("#000000"));
+  const glowColor = useRef(new THREE.Color("#9ca3af")); // Sleek architectural cool gray
+
   useFrame((_, delta) => {
-    const targetRot = isOpening || hovered ? 1.45 : 0;
+    // Smoothly damp progress for ultra-fluid door movement
+    const targetProgress = isOpening ? 1.0 : 0.0;
+    openProgressRef.current = THREE.MathUtils.damp(
+      openProgressRef.current,
+      targetProgress,
+      2.2, // Smooth damp speed
+      delta
+    );
+
+    const progress = openProgressRef.current;
+    // Cubic ease-out curve for natural physical door swing momentum
+    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    const maxRot = Math.PI / 1.75; // ~102 degrees wide opening
+
     if (leftDoorRef.current) {
-      leftDoorRef.current.rotation.y = THREE.MathUtils.lerp(
-        leftDoorRef.current.rotation.y,
-        -targetRot,
-        delta * 4.0
-      );
+      leftDoorRef.current.rotation.y = -easedProgress * maxRot;
     }
     if (rightDoorRef.current) {
-      rightDoorRef.current.rotation.y = THREE.MathUtils.lerp(
-        rightDoorRef.current.rotation.y,
-        targetRot,
-        delta * 4.0
-      );
+      rightDoorRef.current.rotation.y = easedProgress * maxRot;
+    }
+
+    // Delayed gradual illumination curve:
+    // Starts 100% pitch dark black (#000000) for first 25% of door swing, then slowly illuminates from black to sleek light
+    let lightProgress = 0;
+    if (progress > 0.25) {
+      const norm = Math.max(0, Math.min(1, (progress - 0.25) / 0.75));
+      lightProgress = Math.pow(norm, 2.0);
+    }
+
+    if (pointLightRef.current) {
+      pointLightRef.current.intensity = THREE.MathUtils.lerp(0.0, 16.0, lightProgress);
+      pointLightRef.current.distance = THREE.MathUtils.lerp(2.0, 9.0, lightProgress);
+    }
+
+    // Portal background void stays 100% pitch black at first, then slowly brightens from black to sleek light
+    if (bgMaterialRef.current) {
+      bgMaterialRef.current.color.lerpColors(pitchBlackColor.current, glowColor.current, lightProgress);
     }
   });
 
@@ -345,10 +414,6 @@ function FacadeEntrance3DDoor({
     <group
       position={position}
       scale={scale}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpen();
-      }}
       onPointerOver={() => {
         setHovered(true);
         document.body.style.cursor = "pointer";
@@ -358,21 +423,35 @@ function FacadeEntrance3DDoor({
         document.body.style.cursor = "auto";
       }}
     >
-      {/* 1. Polished Gold Outer Archway Frame */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[1.02, 1.02, 0.02]} />
-        <meshBasicMaterial color="#c5a869" />
-      </mesh>
+      {/* 1. Thin Polished Gold Outer Archway Frame Trim (Hollow Perimeter Trim, no solid center fill) */}
+      <group position={[0, 0, 0.005]}>
+        <mesh position={[0, 0.49, 0]}>
+          <boxGeometry args={[1.02, 0.04, 0.02]} />
+          <meshBasicMaterial color="#c5a869" />
+        </mesh>
+        <mesh position={[0, -0.49, 0]}>
+          <boxGeometry args={[1.02, 0.04, 0.02]} />
+          <meshBasicMaterial color="#c5a869" />
+        </mesh>
+        <mesh position={[-0.49, 0, 0]}>
+          <boxGeometry args={[0.04, 1.02, 0.02]} />
+          <meshBasicMaterial color="#c5a869" />
+        </mesh>
+        <mesh position={[0.49, 0, 0]}>
+          <boxGeometry args={[0.04, 1.02, 0.02]} />
+          <meshBasicMaterial color="#c5a869" />
+        </mesh>
+      </group>
 
-      {/* 2. Illuminated Interior Portal Void */}
-      <mesh position={[0, 0, -0.01]}>
-        <boxGeometry args={[0.96, 0.96, 0.02]} />
-        <meshBasicMaterial color={hovered || isOpening ? "#fff3db" : "#07111e"} />
+      {/* 2. Illuminated Interior Portal Void (Positioned inside frame, starts 100% pitch black #000000 and animates to light) */}
+      <mesh position={[0, 0, 0.002]}>
+        <planeGeometry args={[0.96, 0.96]} />
+        <meshBasicMaterial ref={bgMaterialRef} color="#000000" />
       </mesh>
-      <pointLight position={[0, 0, 0.3]} color="#ffeed0" intensity={hovered || isOpening ? 5.0 : 2.0} distance={4.0} />
+      <pointLight ref={pointLightRef} position={[0, 0, 0.05]} color="#f3f4f6" intensity={0.0} distance={2.0} />
 
-      {/* 3. Left Door Panel (Hinged at left edge x = -0.48) */}
-      <group ref={leftDoorRef} position={[-0.48, 0, 0.01]}>
+      {/* 3. Left Door Panel (z = 0.015, in front of void mesh at z = 0.002) */}
+      <group ref={leftDoorRef} position={[-0.48, 0, 0.015]}>
         {/* Navy Door Slab */}
         <mesh position={[0.24, 0, 0]}>
           <boxGeometry args={[0.48, 0.95, 0.02]} />
@@ -400,8 +479,8 @@ function FacadeEntrance3DDoor({
         </mesh>
       </group>
 
-      {/* 4. Right Door Panel (Hinged at right edge x = 0.48) */}
-      <group ref={rightDoorRef} position={[0.48, 0, 0.01]}>
+      {/* 4. Right Door Panel (z = 0.015, in front of void mesh at z = 0.002) */}
+      <group ref={rightDoorRef} position={[0.48, 0, 0.015]}>
         {/* Navy Door Slab */}
         <mesh position={[-0.24, 0, 0]}>
           <boxGeometry args={[0.48, 0.95, 0.02]} />
@@ -449,11 +528,176 @@ function FacadeEntrance3DDoor({
   );
 }
 
+// 4b. 3D Animated Waving UK Union Jack Flag Component (Mounted on Left Wall of Entrance Door)
+function createUKFlagTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // 1. Deep Navy Background Field
+    ctx.fillStyle = "#012169";
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. St Andrew's White Saltire (Diagonal lines)
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 100;
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(w, h);
+    ctx.moveTo(w, 0); ctx.lineTo(0, h);
+    ctx.stroke();
+
+    // 3. St Patrick's Red Saltire (Diagonal lines)
+    ctx.strokeStyle = "#C8102E";
+    ctx.lineWidth = 34;
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(w, h);
+    ctx.moveTo(w, 0); ctx.lineTo(0, h);
+    ctx.stroke();
+
+    // 4. White Central St George's Cross
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(w / 2 - 90, 0, 180, h);
+    ctx.fillRect(0, h / 2 - 90, w, 180);
+
+    // 5. Red Central St George's Cross
+    ctx.fillStyle = "#C8102E";
+    ctx.fillRect(w / 2 - 54, 0, 108, h);
+    ctx.fillRect(0, h / 2 - 54, w, 108);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function UKFlag3D({
+  position,
+  scale,
+  poleBottomOffset = 0.45,
+}: {
+  position: [number, number, number];
+  scale: [number, number, number];
+  poleBottomOffset?: number;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const geomRef = useRef<THREE.PlaneGeometry>(null);
+  const matRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const tex = createUKFlagTexture();
+      if (matRef.current) {
+        matRef.current.map = tex;
+        matRef.current.needsUpdate = true;
+      }
+    }
+  }, []);
+
+  useFrame((state) => {
+    if (!geomRef.current || !scale[0]) return;
+    const time = state.clock.getElapsedTime();
+    const pos = geomRef.current.attributes.position;
+    const count = pos.count;
+    const flagW = scale[0];
+    const flagH = scale[1] || 1;
+
+    for (let i = 0; i < count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+
+      // u goes from 0 (fixed at pole) to 1 (flying free edge)
+      const u = Math.max(0, Math.min(1, (x + flagW / 2) / (flagW || 1)));
+      // v goes from 0 (bottom edge) to 1 (top edge)
+      const v = Math.max(0, Math.min(1, (y + flagH / 2) / flagH));
+
+      // Natural aerodynamic wind wave propagation + corner flutter turbulence
+      const mainWave = Math.sin(u * 7.5 - time * 4.5);
+      const rippleWave = Math.cos(u * 15.0 - time * 8.0) * 0.35;
+      const flutter = Math.sin(v * 6.0 + time * 3.5) * 0.25;
+
+      const z = (mainWave + rippleWave + flutter) * 0.038 * Math.pow(u, 1.2);
+
+      pos.setZ(i, isNaN(z) ? 0 : z);
+    }
+    pos.needsUpdate = true;
+    geomRef.current.computeVertexNormals();
+  });
+
+  const poleX = -scale[0] / 2 - 0.008;
+  const topY = scale[1] * 1.1;
+  const bottomY = -poleBottomOffset;
+  const poleHeight = topY - bottomY;
+  const poleCenterY = (topY + bottomY) / 2;
+
+  return (
+    <group position={position}>
+      {/* 1. Full-Length Ground-Standing Metallic Gold Flagpole */}
+      <mesh position={[poleX, poleCenterY, 0]}>
+        <cylinderGeometry args={[0.006, 0.007, poleHeight, 16]} />
+        <meshStandardMaterial color="#d4af37" metalness={0.9} roughness={0.2} />
+      </mesh>
+
+      {/* 2. Top Brass Spherical Finial Ornament */}
+      <mesh position={[poleX, topY + 0.015, 0]}>
+        <sphereGeometry args={[0.018, 16, 16]} />
+        <meshStandardMaterial color="#f0cc69" metalness={0.95} roughness={0.1} />
+      </mesh>
+
+      {/* 3. Weighted Brass Ground Base Stand (Standing on Courtyard Floor) */}
+      <group position={[poleX, bottomY + 0.005, 0]}>
+        {/* Wide Outer Base Disc */}
+        <mesh position={[0, 0, 0]}>
+          <cylinderGeometry args={[0.032, 0.042, 0.012, 32]} />
+          <meshStandardMaterial color="#c5a869" metalness={0.85} roughness={0.2} />
+        </mesh>
+        {/* Inner Tapered Neck */}
+        <mesh position={[0, 0.01, 0]}>
+          <cylinderGeometry args={[0.018, 0.028, 0.01, 32]} />
+          <meshStandardMaterial color="#d4af37" metalness={0.9} roughness={0.15} />
+        </mesh>
+      </group>
+
+      {/* 4. Wall Anchoring Brackets along the Pole */}
+      <mesh position={[poleX, poleCenterY * 0.4, -0.01]}>
+        <boxGeometry args={[0.02, 0.02, 0.025]} />
+        <meshStandardMaterial color="#c5a869" metalness={0.8} />
+      </mesh>
+      <mesh position={[poleX, poleCenterY * 1.3, -0.01]}>
+        <boxGeometry args={[0.02, 0.02, 0.025]} />
+        <meshStandardMaterial color="#c5a869" metalness={0.8} />
+      </mesh>
+
+      {/* 5. Dynamic 3D Waving UK Flag Cloth Mesh (Vibrant Navy & Red Colors) */}
+      <mesh ref={meshRef} position={[0, scale[1] * 0.25, 0]}>
+        <planeGeometry ref={geomRef} args={[scale[0], scale[1], 32, 32]} />
+        <meshBasicMaterial ref={matRef} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
 // 5. Facade High-Resolution Artwork Texture Plane (`home_page_hero.png`)
-function HighResFacadePlane({ isOpening, onOpen }: { isOpening: boolean; onOpen: () => void }) {
+function HighResFacadePlane({ isOpening, onOpen }: { isOpening?: boolean; onOpen: () => void }) {
   const texture = useTexture("/sources/home_page_hero.png");
   texture.colorSpace = THREE.SRGBColorSpace;
   const viewport = useThree((state) => state.viewport);
+  const [isOpeningDoor, setIsOpeningDoor] = React.useState(false);
+
+  const groupRef = useRef<THREE.Group>(null);
+  const zoomProgressRef = useRef(0);
+
+  const handleOpenClick = () => {
+    if (isOpeningDoor) return;
+    setIsOpeningDoor(true);
+    // Smooth door opening & portal illumination sequence for 2000ms before switching view into Atrium
+    setTimeout(() => {
+      onOpen();
+    }, 2000);
+  };
 
   // 100% Full screen fill (no black bars, no cropping, fills screen edge-to-edge)
   const width = viewport.width;
@@ -465,20 +709,48 @@ function HighResFacadePlane({ isOpening, onOpen }: { isOpening: boolean; onOpen:
   const doorWidth = width * 0.165;
   const doorHeight = height * 0.365;
 
+  useFrame((_, delta) => {
+    const targetZoom = isOpeningDoor ? 1.0 : 0.0;
+    zoomProgressRef.current = THREE.MathUtils.damp(
+      zoomProgressRef.current,
+      targetZoom,
+      2.8, // Fluid camera zoom speed
+      delta
+    );
+
+    const zProg = zoomProgressRef.current;
+    const easedZ = 1 - Math.pow(1 - zProg, 2); // Smooth quadratic ease out
+
+    if (groupRef.current) {
+      // Scale facade smoothly up towards 1.35x and shift position towards doorway center
+      const currentScale = 1.0 + easedZ * 0.35;
+      groupRef.current.scale.set(currentScale, currentScale, 1);
+      groupRef.current.position.x = -easedZ * doorPosX * 0.35;
+      groupRef.current.position.y = -easedZ * doorPosY * 0.35;
+    }
+  });
+
   return (
-    <group position={[0, 0, 0]}>
-      {/* Background Artwork */}
+    <group ref={groupRef} position={[0, 0, 0]}>
+      {/* Background Artwork (z = 0) */}
       <mesh position={[0, 0, 0]} scale={[width, height, 1]}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={texture} />
       </mesh>
 
-      {/* 3D Double Opening Door Recessed Backside into the Doorway */}
+      {/* 3D Double Opening Door (Positioned at z = 0.02 so void mesh at z = 0.022 is IN FRONT of background z = 0) */}
       <FacadeEntrance3DDoor
-        position={[doorPosX, doorPosY, 0.001]}
+        position={[doorPosX, doorPosY, 0.02]}
         scale={[doorWidth, doorHeight, 1]}
-        isOpening={isOpening}
-        onOpen={onOpen}
+        isOpening={isOpeningDoor}
+        onOpen={handleOpenClick}
+      />
+
+      {/* 3D Flying UK Flag mounted on Left Side of Entrance Door with Ground Base Stand */}
+      <UKFlag3D
+        position={[doorPosX - doorWidth * 0.58, doorPosY + doorHeight * 0.68, 0.03]}
+        scale={[doorWidth * 0.42, doorHeight * 0.25, 1]}
+        poleBottomOffset={doorHeight * 1.18}
       />
     </group>
   );
@@ -503,9 +775,12 @@ function IndividualRoomPlane({ room }: { room: ServiceRoom }) {
   const maxPanY = (scaleY - viewport.height) / 2;
 
   useFrame((state, delta) => {
-    // Vertical scroll pan down the room
-    const targetY = THREE.MathUtils.clamp((scrollProgress - 0.4) * maxPanY * 1.2, -maxPanY, maxPanY);
-    // Horizontal mouse cursor pan across the room
+    // 2-Axis Cursor Navigation: combines vertical scroll progress with mouse cursor Y position
+    const scrollYOffset = (scrollProgress - 0.4) * maxPanY * 1.0;
+    const cursorYOffset = -state.mouse.y * maxPanY * 0.8;
+    const targetY = THREE.MathUtils.clamp(scrollYOffset + cursorYOffset, -maxPanY, maxPanY);
+
+    // Horizontal mouse cursor pan across the room (X-axis)
     const targetX = THREE.MathUtils.clamp(-state.mouse.x * maxPanX * 0.8, -maxPanX, maxPanX);
 
     if (groupRef.current) {

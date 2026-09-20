@@ -29,13 +29,8 @@ export const ClosedHouseHero: React.FC = () => {
       {/* Main Hero Typography Container */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 flex-1 flex flex-col justify-center items-start w-full pointer-events-none">
         <div className="max-w-xl text-left space-y-6 pointer-events-auto bg-transparent p-0">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/40 border border-[#c5a869]/60 text-[#c5a869] text-xs uppercase tracking-widest font-bold shadow-lg backdrop-blur-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            Institutional Excellence & Technology
-          </div>
-
           <div className="space-y-3">
-            <span className="text-xs uppercase tracking-[0.3em] font-bold text-[#c5a869] block drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+            <span className="text-base sm:text-lg md:text-xl uppercase tracking-[0.35em] font-extrabold text-[#c5a869] block">
               WELCOME TO
             </span>
             <h1 className="text-4xl sm:text-6xl font-serif font-extrabold text-white tracking-wide leading-none drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
@@ -48,19 +43,6 @@ export const ClosedHouseHero: React.FC = () => {
             </p>
           </div>
 
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] max-w-lg">
-            A modern UK business house connecting specialist expertise, intelligent operations, global delivery, and exclusive international opportunities across borders.
-          </p>
-
-          <div className="pt-2">
-            <button
-              onClick={() => setIsRoiModalOpen(true)}
-              className="inline-flex items-center gap-2.5 px-6 py-3.5 text-xs uppercase tracking-[0.2em] font-extrabold text-[#00d4ff] bg-black/40 border border-[#00d4ff]/60 rounded-full hover:bg-[#00d4ff] hover:text-[#0b1528] shadow-lg transition-all backdrop-blur-sm cursor-pointer"
-            >
-              <Calculator className="w-4 h-4 text-[#00d4ff]" />
-              Calculate Savings ROI
-            </button>
-          </div>
         </div>
       </div>
 
