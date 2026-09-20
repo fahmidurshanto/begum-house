@@ -4,6 +4,8 @@ import React, { useRef, Suspense } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { PerspectiveCamera, Sparkles, Html, useTexture } from "@react-three/drei";
 import * as THREE from "three";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import { useHouseStore } from "@/store/useHouseStore";
 import { SERVICE_ROOMS, ServiceRoom } from "@/data/houseData";
 import { ArrowRight, Calculator, Globe, ArrowUpRight, ChevronRight, Layers, Cpu, Compass, HeartPulse, Briefcase, GraduationCap, TrendingUp } from "lucide-react";
@@ -764,122 +766,194 @@ function IndividualRoomPlane({ room }: { room: ServiceRoom }) {
   const { scrollProgress } = useHouseStore();
 
   const groupRef = useRef<THREE.Group>(null);
+  const layerRef = useRef<THREE.Mesh>(null);
+  const glassMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const borderMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
+
+  useGSAP(() => {
+    // Smoothly fade in both the glass layer and its gold border
+    if (glassMaterialRef.current) {
+      gsap.fromTo(
+        glassMaterialRef.current,
+        { opacity: 0 },
+        { opacity: 0.65, duration: 1.5, ease: "power2.out" }
+      );
+    }
+    if (borderMaterialRef.current) {
+      gsap.fromTo(
+        borderMaterialRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 1.5, ease: "power2.out" }
+      );
+    }
+  }, []);
 
   // Deep zoom scaling from 1.0x up to 1.75x
   const zoomFactor = 1.0 + Math.min(1, scrollProgress * 0.75);
-  const scaleX = viewport.width * zoomFactor;
-  const scaleY = viewport.height * zoomFactor;
+  
+  // Base dimensions of the screen
+  const baseW = viewport.width;
+  const baseH = viewport.height;
 
-  // Maximum pan offsets allowed without exposing screen edges
-  const maxPanX = (scaleX - viewport.width) / 2;
-  const maxPanY = (scaleY - viewport.height) / 2;
+  // The scaled dimensions based on zoom
+  const scaleX = baseW * zoomFactor;
+  const scaleY = baseH * zoomFactor;
+
+  const maxPanX = (scaleX - baseW) / 2;
+  const maxPanY = (scaleY - baseH) / 2;
 
   useFrame((state, delta) => {
-    // 2-Axis Cursor Navigation: combines vertical scroll progress with mouse cursor Y position
     const scrollYOffset = (scrollProgress - 0.4) * maxPanY * 1.0;
     const cursorYOffset = -state.mouse.y * maxPanY * 0.8;
     const targetY = THREE.MathUtils.clamp(scrollYOffset + cursorYOffset, -maxPanY, maxPanY);
-
-    // Horizontal mouse cursor pan across the room (X-axis)
     const targetX = THREE.MathUtils.clamp(-state.mouse.x * maxPanX * 0.8, -maxPanX, maxPanX);
 
     if (groupRef.current) {
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, delta * 5.0);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, delta * 5.0);
+      // Uniformly scale the entire group so both background and HTML text stay perfectly synchronized
+      groupRef.current.scale.set(zoomFactor, zoomFactor, 1);
     }
   });
 
-  // Center of the large gold-framed dark wall display in room.png (below OUR SERVICE header)
+  // EXACT BLACKBOARD BOUNDING BOX CALCULATIONS (based on room.png visual analysis)
+  // The blackboard is perfectly centered horizontally (X = 0)
+  // Reduced further to ensure the border doesn't crowd the edges of the dark blue area
+  const board3DWidth = baseW * 0.40; 
+  const board3DHeight = baseH * 0.38; 
   const boardX = 0;
-  const boardY = -0.05;
+  const boardY = baseH * 0.06; // Shifted slightly upwards as requested
 
   return (
     <group ref={groupRef} position={[0, 0, 0]}>
-      {/* Background Room Artwork Plane */}
-      <mesh position={[0, 0, 0]} scale={[scaleX, scaleY, 1]}>
+      {/* Background Room Artwork Plane (Scales to base viewport size) */}
+      <mesh position={[0, 0, 0]} scale={[baseW, baseH, 1]}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={texture} />
       </mesh>
 
-      {/* Crisp 100% Pixel-Perfect Data Content Pinned Directly onto the Central Blackboard Surface */}
+      {/* GSAP Animated 3D Glass Layer & Border */}
+      <group position={[boardX, boardY, 0.001]}>
+        {/* Bold Gold Border (Slightly larger plane placed right behind) */}
+        <mesh position={[0, 0, -0.0001]}>
+          <planeGeometry args={[board3DWidth * 1.015, board3DHeight * 1.02]} />
+          <meshBasicMaterial 
+            ref={borderMaterialRef}
+            color="#c5a869" 
+            transparent={true} 
+          />
+        </mesh>
+
+        {/* Inner Glass Layer */}
+        <mesh position={[0, 0, 0]}>
+          <planeGeometry args={[board3DWidth, board3DHeight]} />
+          <meshBasicMaterial 
+            ref={glassMaterialRef}
+            color="#001830" 
+            transparent={true} 
+          />
+        </mesh>
+      </group>
+
+      {/* 
+        Data panel — sits directly on top of the 3D glass layer (z=0.05, same XY as boardX/boardY).
+        distanceFactor is tuned so the pixel container maps 1:1 to board3DWidth × board3DHeight.
+      */}
       <Html
-        position={[boardX, boardY, 0.02]}
+        position={[boardX, boardY, 0.05]}
         center
-        distanceFactor={7.5}
+        transform
+        distanceFactor={3.4} 
       >
-        <div className="w-[720px] sm:w-[840px] text-slate-100 space-y-3 font-sans pointer-events-auto bg-transparent border-0 shadow-none px-4 select-none">
-          {/* Top Sub-Header Bar (Below 'OUR SERVICE') */}
-          <div className="flex items-center justify-between pb-2 border-b border-[#c5a869]/30">
-            <span className="text-xs font-mono tracking-widest text-[#c5a869] uppercase font-bold">
-              {room.category || "STRATEGY"}
-            </span>
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00d4ff]/10 border border-[#00d4ff]/40 text-[#00d4ff] text-[10px] font-mono font-bold tracking-wider">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00d4ff] animate-pulse" />
-              LIVE DATA
+        {/* 
+          Container is 680×520px. At distanceFactor=3.4 this maps to the 
+          same physical footprint as board3DWidth × board3DHeight in 3D space. 
+          overflow-hidden guarantees nothing ever bleeds outside the gold border.
+        */}
+        <div
+          style={{ width: "760px", height: "490px", fontFamily: "sans-serif" }}
+          className="flex flex-col overflow-hidden select-none pointer-events-auto px-8 py-5 gap-3"
+        >
+          {/* ── TOP ROW: Category badge + LIVE pill ── */}
+          <div className="flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-8 bg-[#c5a869] rounded-full" />
+              <span className="text-sm font-mono tracking-[0.2em] uppercase text-[#c5a869] font-bold">
+                {room.category}
+              </span>
+            </div>
+            <span className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00d4ff]/50 bg-[#00d4ff]/10 text-[#00d4ff] text-[11px] font-mono font-bold tracking-widest">
+              <span className="w-2 h-2 rounded-full bg-[#00d4ff] animate-pulse inline-block" />
+              LIVE SESSION
             </span>
           </div>
 
-          {/* Main 2-Column Content Grid */}
-          <div className="grid grid-cols-12 gap-8 items-start pt-1">
-            {/* Left Column (5/12) */}
-            <div className="col-span-5 space-y-3 pr-2">
-              <h2 className="text-3xl font-serif font-bold text-[#f4ecd8] leading-tight tracking-wide drop-shadow">
-                {room.title}
-              </h2>
-              <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                {room.fullDesc || room.shortDesc}
-              </p>
+          {/* ── DIVIDER ── */}
+          <div className="w-full h-px bg-gradient-to-r from-[#c5a869] via-[#c5a869]/50 to-transparent shrink-0" />
 
-              {/* Gold Line with Glowing Circular Node */}
-              <div className="relative py-2 flex items-center">
-                <div className="w-full h-[1px] bg-gradient-to-r from-[#c5a869]/60 via-[#c5a869] to-transparent" />
-                <div className="absolute right-4 w-5 h-5 rounded-full border border-[#c5a869] bg-[#071322] flex items-center justify-center shadow-[0_0_10px_#c5a869]">
-                  <div className="w-2 h-2 rounded-full bg-[#c5a869]" />
-                </div>
-              </div>
+          {/* ── TITLE + SHORT DESC ── */}
+          <div className="flex flex-col gap-1.5 shrink-0">
+            <h2 className="text-3xl font-serif font-bold text-[#f4ecd8] leading-tight tracking-wide">
+              {room.title}
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">
+              {room.fullDesc}
+            </p>
+          </div>
 
-              {/* Key Performance Metric */}
-              <div className="space-y-0.5">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-[#c5a869] block font-bold">
-                  KEY PERFORMANCE METRIC
-                </span>
-                <span className="text-sm font-mono text-[#00d4ff] font-extrabold block">
-                  {room.keyMetrics && room.keyMetrics.length > 0
-                    ? `${room.keyMetrics[0].label}: ${room.keyMetrics[0].value}`
-                    : "M&A Volume: £450M+"}
-                </span>
-              </div>
-            </div>
+          {/* ── MAIN BODY: Services (2-col) + Metrics side-by-side ── */}
+          <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden">
 
-            {/* Right Column (7/12) */}
-            <div className="col-span-7 space-y-4 pl-4 border-l border-[#c5a869]/30 min-h-[220px] flex flex-col justify-between">
-              <div className="space-y-3">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-[#c5a869] block font-bold">
-                  CORE STRATEGIC CAPABILITIES:
-                </span>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {(room.services || []).slice(0, 4).map((service: string, idx: number) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 bg-[#05101e]/80 px-3 py-2.5 rounded-lg border border-[#c5a869]/40 backdrop-blur-sm"
-                    >
-                      <span className="text-[#c5a869] text-xs">◆</span>
-                      <span className="text-xs font-semibold text-slate-100 truncate">{service}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Consult Advisory Button */}
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => useHouseStore.getState().setIsRoiModalOpen(true)}
-                  className="px-6 py-2.5 rounded-full bg-[#c5a869] text-[#071322] text-xs font-black tracking-widest uppercase hover:bg-white hover:scale-105 transition-all shadow-[0_0_20px_rgba(197,168,105,0.4)] cursor-pointer"
-                >
-                  CONSULT ADVISORY
-                </button>
+            {/* LEFT: Services list */}
+            <div className="flex flex-col gap-2 overflow-hidden">
+              <span className="text-[10px] uppercase font-mono tracking-widest text-[#c5a869] font-bold shrink-0">
+                Core Capabilities
+              </span>
+              <div className="flex flex-col gap-1.5 overflow-hidden">
+                {room.services.slice(0, 4).map((s, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 bg-[#ffffff07] border border-[#c5a869]/25 rounded-lg px-4 py-2"
+                  >
+                    <span className="text-[#c5a869] text-xs shrink-0">◆</span>
+                    <span className="text-xs font-semibold text-slate-200 truncate">{s}</span>
+                  </div>
+                ))}
               </div>
             </div>
+
+            {/* RIGHT: Key Metrics stacked */}
+            <div className="flex flex-col gap-2 overflow-hidden">
+              <span className="text-[10px] uppercase font-mono tracking-widest text-[#c5a869] font-bold shrink-0">
+                Key Metrics
+              </span>
+              <div className="flex flex-col gap-2 flex-1 justify-around">
+                {room.keyMetrics.map((m, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col gap-0.5 bg-[#ffffff07] border border-[#00d4ff]/20 rounded-xl px-5 py-2.5"
+                  >
+                    <span className="text-2xl font-mono font-extrabold text-[#00d4ff] leading-none">
+                      {m.value}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">{m.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── BOTTOM: Divider + CTA ── */}
+          <div className="flex items-center justify-between shrink-0 pt-1 border-t border-[#c5a869]/20">
+            <p className="text-[10px] text-slate-500 font-mono tracking-wide line-clamp-1">
+              {room.shortDesc}
+            </p>
+            <button
+              onClick={() => useHouseStore.getState().setIsRoiModalOpen(true)}
+              className="px-6 py-2 rounded-full bg-[#c5a869] text-[#071322] text-xs font-black tracking-widest uppercase hover:bg-white hover:scale-105 transition-all shadow-[0_0_20px_rgba(197,168,105,0.5)] cursor-pointer shrink-0 ml-4"
+            >
+              CONSULT ADVISORY
+            </button>
           </div>
         </div>
       </Html>
