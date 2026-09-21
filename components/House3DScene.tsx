@@ -193,6 +193,58 @@ const LOBBY_BOOTH_CONFIGS: { id: string; xPct: number; yPct: number; wPct: numbe
   { id: "mental-health", xPct: 0.34, yPct: 0.01, wPct: 0.085, hPct: 0.075 },
 ];
 
+// 2b. High-Res Crisp 3D Wall Crest Mesh matching exact original PNG colors and proportions
+function WallCrest3DMesh({ position, scale, zoomFactor = 1.0 }: { position: [number, number, number]; scale: [number, number, number]; zoomFactor?: number }) {
+  const logoTexture = useTexture("/sources/Logo - Edited.png");
+  logoTexture.colorSpace = THREE.SRGBColorSpace;
+
+  const meshRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = React.useState(false);
+
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      // Counter-scale zoomFactor so size stays completely fixed during scroll, plus hover scaling
+      const baseCounterScale = 1 / zoomFactor;
+      const targetScale = hovered ? baseCounterScale * 1.05 : baseCounterScale;
+      meshRef.current.scale.x = THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, delta * 6);
+      meshRef.current.scale.y = THREE.MathUtils.lerp(meshRef.current.scale.y, targetScale, delta * 6);
+    }
+  });
+
+  return (
+    <group
+      ref={meshRef}
+      position={position}
+      scale={scale}
+      onPointerOver={() => {
+        setHovered(true);
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        document.body.style.cursor = "auto";
+      }}
+      onClick={() => useHouseStore.getState().returnToFacade()}
+    >
+      {/* Crisp PNG Logo Texture Mesh with zero color distortion */}
+      <mesh position={[0, 0, 0]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          map={logoTexture}
+          transparent={true}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      
+      {/* Subtle Golden Ambient Light Glow on Hover */}
+      {hovered && (
+        <pointLight position={[0, 0, 0.2]} color="#c5a869" intensity={4.0} distance={3.0} />
+      )}
+    </group>
+  );
+}
+
 // 2. High-Resolution Lobby Artwork Texture Plane (`lobby.png`) with Sticky 3D Doors
 function LobbyArtworkPlane({
   selectedRoom,
@@ -331,6 +383,13 @@ function LobbyArtworkPlane({
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={texture} />
       </mesh>
+
+      {/* 3D Crisp Wall Logo Crest Mesh placed at top center wall */}
+      <WallCrest3DMesh
+        position={[0, 0.25 * scaleY, 0.015]}
+        scale={[0.58 * scaleX, 0.58 * scaleX, 1]}
+        zoomFactor={zoomFactor}
+      />
 
       {/* Render 7 Interactive 3D Doors Sticky Glued Directly to the Image Booths */}
       {SERVICE_ROOMS.map((room) => {
