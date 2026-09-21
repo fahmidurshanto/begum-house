@@ -35,10 +35,10 @@ export const ClosedHouseHero: React.FC = () => {
       </div>
 
       {/* Bottom Footer Ribbon */}
-      <div className="relative z-10 bg-[#091322]/90 border-t border-[#c5a869]/30 py-4 px-6 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 font-medium gap-2">
+      <div className="relative z-10 bg-transparent py-4 px-6 border-t-0 shadow-none">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center text-xs text-slate-200 font-extrabold gap-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
           <span>© {new Date().getFullYear()} BEGUM HOUSE. ALL RIGHTS RESERVED.</span>
-          <span className="text-[#c5a869] font-mono tracking-widest uppercase font-bold">
+          <span className="text-[#c5a869] font-mono tracking-widest uppercase font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
             LONDON • ISTANBUL • DUBAI
           </span>
         </div>

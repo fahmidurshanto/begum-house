@@ -38,6 +38,11 @@ function LobbyRoom3DDoor({
   isSelected: boolean;
   onSelect: () => void;
 }) {
+  const roomPreviewTexture = useTexture("/sources/room.png");
+  roomPreviewTexture.colorSpace = THREE.SRGBColorSpace;
+  roomPreviewTexture.minFilter = THREE.LinearFilter;
+  roomPreviewTexture.magFilter = THREE.LinearFilter;
+
   const leftDoorRef = useRef<THREE.Group>(null);
   const rightDoorRef = useRef<THREE.Group>(null);
   const pointLightRef = useRef<THREE.PointLight>(null);
@@ -46,10 +51,6 @@ function LobbyRoom3DDoor({
 
   // Smooth animation progress from 0 (closed) to 1 (fully open)
   const openProgressRef = useRef(0);
-
-  // Colors for black-to-gray portal transition (pure monochrome gradient)
-  const pitchBlackColor = useRef(new THREE.Color("#000000"));
-  const glowGrayColor = useRef(new THREE.Color("#9ca3af")); // Sleek architectural gray
 
   useFrame((_, delta) => {
     const active = isSelected || hovered;
@@ -73,21 +74,17 @@ function LobbyRoom3DDoor({
       rightDoorRef.current.rotation.y = easedProgress * maxRot;
     }
 
-    // Delayed gradual lighting curve:
-    // 100% pitch black (#000000) at first (0% - 35%), then slowly illuminates from black to sleek gray (35% - 100%)
     let lightProgress = 0;
-    if (progress > 0.35) {
-      const norm = Math.max(0, Math.min(1, (progress - 0.35) / 0.65));
-      lightProgress = Math.pow(norm, 2.2);
+    if (progress > 0.15) {
+      lightProgress = Math.min(1, (progress - 0.15) / 0.85);
     }
 
     if (pointLightRef.current) {
-      pointLightRef.current.intensity = THREE.MathUtils.lerp(0.0, 8.0, lightProgress);
-      pointLightRef.current.distance = THREE.MathUtils.lerp(2.0, 4.5, lightProgress);
+      pointLightRef.current.intensity = THREE.MathUtils.lerp(0.0, 10.0, lightProgress);
+      pointLightRef.current.distance = THREE.MathUtils.lerp(1.5, 4.5, lightProgress);
     }
 
     if (bgMeshRef.current) {
-      bgMeshRef.current.color.lerpColors(pitchBlackColor.current, glowGrayColor.current, lightProgress);
       bgMeshRef.current.opacity = THREE.MathUtils.lerp(0.0, 0.95, lightProgress);
     }
   });
@@ -115,12 +112,22 @@ function LobbyRoom3DDoor({
         <meshBasicMaterial color="#c5a869" wireframe />
       </mesh>
 
-      {/* 2. Black to Gray Interior Portal Void (Starts pitch black) */}
+      {/* 2. Blurred Room Interior Preview Mesh inside door cavity */}
       <mesh position={[0, 0, -0.01]}>
-        <boxGeometry args={[0.98, 0.98, 0.02]} />
-        <meshBasicMaterial ref={bgMeshRef} color="#000000" transparent opacity={0.0} />
+        <planeGeometry args={[0.98, 0.98]} />
+        <meshBasicMaterial
+          ref={bgMeshRef}
+          map={roomPreviewTexture}
+          transparent={true}
+          opacity={0.0}
+        />
       </mesh>
-      <pointLight ref={pointLightRef} position={[0, 0, 0.2]} color="#f3f4f6" intensity={0.0} distance={3.5} />
+      {/* Frosted Glass Overlay */}
+      <mesh position={[0, 0, -0.005]}>
+        <planeGeometry args={[0.98, 0.98]} />
+        <meshBasicMaterial color="#081424" transparent={true} opacity={0.45} />
+      </mesh>
+      <pointLight ref={pointLightRef} position={[0, 0, 0.2]} color="#ffeed0" intensity={0.0} distance={3.5} />
 
       {/* 3. Left Crystal Clear Glass Door Panel */}
       <group ref={leftDoorRef} position={[-0.49, 0, 0.01]}>
@@ -472,6 +479,12 @@ function FacadeEntrance3DDoor({
   isOpening: boolean;
   onOpen: () => void;
 }) {
+  const lobbyPreviewTexture = useTexture("/sources/lobby.png");
+  lobbyPreviewTexture.colorSpace = THREE.SRGBColorSpace;
+  lobbyPreviewTexture.minFilter = THREE.LinearFilter;
+  lobbyPreviewTexture.magFilter = THREE.LinearFilter;
+  lobbyPreviewTexture.generateMipmaps = false;
+
   const leftDoorRef = useRef<THREE.Group>(null);
   const rightDoorRef = useRef<THREE.Group>(null);
   const pointLightRef = useRef<THREE.PointLight>(null);
@@ -480,10 +493,6 @@ function FacadeEntrance3DDoor({
 
   // Smooth animation progress from 0 (closed) to 1 (fully open)
   const openProgressRef = useRef(0);
-
-  // Colors for black-to-gray portal transition (pure monochrome gradient)
-  const pitchBlackColor = useRef(new THREE.Color("#000000"));
-  const glowColor = useRef(new THREE.Color("#f0e4c8")); // Warm amber interior light glow
 
   useFrame((_, delta) => {
     // Smoothly damp progress for ultra-fluid door movement
@@ -507,22 +516,18 @@ function FacadeEntrance3DDoor({
       rightDoorRef.current.rotation.y = easedProgress * maxRot;
     }
 
-    // Delayed gradual illumination curve:
-    // Starts 100% pitch dark black (#000000) for first 25% of door swing, then slowly illuminates from black to sleek light
     let lightProgress = 0;
-    if (progress > 0.25) {
-      const norm = Math.max(0, Math.min(1, (progress - 0.25) / 0.75));
-      lightProgress = Math.pow(norm, 2.0);
+    if (progress > 0.15) {
+      lightProgress = Math.min(1, (progress - 0.15) / 0.85);
     }
 
     if (pointLightRef.current) {
-      pointLightRef.current.intensity = THREE.MathUtils.lerp(0.0, 16.0, lightProgress);
+      pointLightRef.current.intensity = THREE.MathUtils.lerp(0.5, 12.0, lightProgress);
       pointLightRef.current.distance = THREE.MathUtils.lerp(2.0, 9.0, lightProgress);
     }
 
-    // Portal background void stays 100% pitch black at first, then slowly brightens from black to sleek light
     if (bgMaterialRef.current) {
-      bgMaterialRef.current.color.lerpColors(pitchBlackColor.current, glowColor.current, lightProgress);
+      bgMaterialRef.current.opacity = THREE.MathUtils.lerp(0.2, 1.0, lightProgress);
     }
   });
 
@@ -539,7 +544,7 @@ function FacadeEntrance3DDoor({
         document.body.style.cursor = "auto";
       }}
     >
-      {/* 1. Thin Polished Gold Outer Archway Frame Trim (Hollow Perimeter Trim, no solid center fill) */}
+      {/* 1. Thin Polished Gold Outer Archway Frame Trim */}
       <group position={[0, 0, 0.005]}>
         <mesh position={[0, 0.49, 0]}>
           <boxGeometry args={[1.02, 0.04, 0.02]} />
@@ -559,12 +564,26 @@ function FacadeEntrance3DDoor({
         </mesh>
       </group>
 
-      {/* 2. Illuminated Interior Portal Void (Positioned inside frame, starts 100% pitch black #000000 and animates to light) */}
+      {/* 2. Heavily Blurred Interior Lobby Artwork Preview Mesh inside the open doorway */}
       <mesh position={[0, 0, 0.002]}>
         <planeGeometry args={[0.96, 0.96]} />
-        <meshBasicMaterial ref={bgMaterialRef} color="#000000" />
+        <meshBasicMaterial
+          ref={bgMaterialRef}
+          map={lobbyPreviewTexture}
+          transparent={true}
+          opacity={0.15}
+        />
       </mesh>
-      <pointLight ref={pointLightRef} position={[0, 0, 0.05]} color="#f3f4f6" intensity={0.0} distance={2.0} />
+      {/* Frosted Diffusion Veil for Deep Soft Blur Effect */}
+      <mesh position={[0, 0, 0.003]}>
+        <planeGeometry args={[0.96, 0.96]} />
+        <meshBasicMaterial
+          color="#120c04"
+          transparent={true}
+          opacity={0.55}
+        />
+      </mesh>
+      <pointLight ref={pointLightRef} position={[0, 0, 0.05]} color="#ffeed0" intensity={0.5} distance={2.0} />
 
       {/* 3. Left Door Panel (z = 0.015, in front of void mesh at z = 0.002) */}
       <group ref={leftDoorRef} position={[-0.48, 0, 0.015]}>
@@ -806,7 +825,7 @@ function IndividualRoomPlane({ room }: { room: ServiceRoom }) {
   const board3DWidth = baseW * 0.40; 
   const board3DHeight = baseH * 0.38; 
   const boardX = 0;
-  const boardY = baseH * 0.06; // Shifted slightly upwards as requested
+  const boardY = baseH * 0.06;
 
   return (
     <group ref={groupRef} position={[0, 0, 0]}>
@@ -815,6 +834,12 @@ function IndividualRoomPlane({ room }: { room: ServiceRoom }) {
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={texture} />
       </mesh>
+
+      {/* 3D Wall Crest Logo mounted on the right side blue wall space matching left side logo size */}
+      <WallCrest3DMesh
+        position={[baseW * 0.35, baseH * 0.08, 0.005]}
+        scale={[baseW * 0.095, baseW * 0.095, 1]}
+      />
 
       {/* GSAP Animated 3D Glass Layer & Border */}
       <group position={[boardX, boardY, 0.001]}>
