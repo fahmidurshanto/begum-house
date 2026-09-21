@@ -18,10 +18,10 @@ export const ClosedHouseHero: React.FC = () => {
 
         <div className="max-w-xl text-left space-y-6 pointer-events-auto bg-transparent p-0">
           <div className="space-y-3">
-            <span className="text-base sm:text-lg md:text-xl uppercase tracking-[0.35em] font-extrabold text-[#c5a869] block">
+            <span className="text-xs sm:text-sm md:text-base uppercase tracking-[0.35em] font-extrabold text-[#c5a869] block">
               WELCOME TO
             </span>
-            <h1 className="text-4xl sm:text-6xl font-serif font-extrabold text-white tracking-wide leading-none drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
+            <h1 className="text-2xl sm:text-4xl font-serif font-extrabold text-white tracking-wide leading-none drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
               <span className="bg-gradient-to-r from-white via-[#f5ede0] to-[#c5a869] bg-clip-text text-transparent">
                 BEGUM HOUSE
               </span>

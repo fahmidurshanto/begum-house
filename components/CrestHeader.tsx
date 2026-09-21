@@ -8,8 +8,16 @@ import { Calculator, Globe, Volume2, VolumeX } from "lucide-react";
 export const CrestHeader: React.FC = () => {
   const { view, returnToFacade, setIsRoiModalOpen, setIsGlobalModalOpen, isSoundMuted, toggleSound } = useHouseStore();
 
+  const isFacade = view === "FACADE";
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#faf6f0]/90 backdrop-blur-md border-b border-[#c5a869]/30 shadow-sm transition-all duration-300">
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        isFacade
+          ? "bg-transparent border-transparent shadow-none"
+          : "bg-[#faf6f0]/90 backdrop-blur-md border-b border-[#c5a869]/30 shadow-sm"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         
         {/* Brand Logo & Name */}
@@ -31,7 +39,7 @@ export const CrestHeader: React.FC = () => {
             <span className="block font-serif text-xl font-bold tracking-[0.25em] text-[#1a1a2e] group-hover:text-[#c5a869] transition-colors">
               BEGUM HOUSE
             </span>
-            <span className="block text-[10px] tracking-[0.2em] text-[#c5a869] uppercase font-bold">
+            <span className="block text-[10px] tracking-[0.2em] text-[#1a1a2e] uppercase font-bold">
               Global Services • Intelligent Operations
             </span>
           </div>
