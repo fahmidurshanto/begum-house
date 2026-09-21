@@ -194,39 +194,20 @@ const LOBBY_BOOTH_CONFIGS: { id: string; xPct: number; yPct: number; wPct: numbe
 ];
 
 // 2b. High-Res Crisp 3D Wall Crest Mesh matching exact original PNG colors and proportions
-function WallCrest3DMesh({ position, scale, zoomFactor = 1.0 }: { position: [number, number, number]; scale: [number, number, number]; zoomFactor?: number }) {
+function WallCrest3DMesh({ position, scale }: { position: [number, number, number]; scale: [number, number, number] }) {
   const logoTexture = useTexture("/sources/Logo - Edited.png");
   logoTexture.colorSpace = THREE.SRGBColorSpace;
 
   const meshRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = React.useState(false);
 
-  useFrame((_, delta) => {
-    if (meshRef.current) {
-      // Counter-scale zoomFactor so size stays completely fixed during scroll, plus hover scaling
-      const baseCounterScale = 1 / zoomFactor;
-      const targetScale = hovered ? baseCounterScale * 1.05 : baseCounterScale;
-      meshRef.current.scale.x = THREE.MathUtils.lerp(meshRef.current.scale.x, targetScale, delta * 6);
-      meshRef.current.scale.y = THREE.MathUtils.lerp(meshRef.current.scale.y, targetScale, delta * 6);
-    }
-  });
-
   return (
     <group
       ref={meshRef}
       position={position}
       scale={scale}
-      onPointerOver={() => {
-        setHovered(true);
-        document.body.style.cursor = "pointer";
-      }}
-      onPointerOut={() => {
-        setHovered(false);
-        document.body.style.cursor = "auto";
-      }}
-      onClick={() => useHouseStore.getState().returnToFacade()}
     >
-      {/* Crisp PNG Logo Texture Mesh with zero color distortion */}
+      {/* Crisp PNG Logo Texture Mesh with 100% accurate original colors */}
       <mesh position={[0, 0, 0]}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial
@@ -237,9 +218,9 @@ function WallCrest3DMesh({ position, scale, zoomFactor = 1.0 }: { position: [num
         />
       </mesh>
       
-      {/* Subtle Golden Ambient Light Glow on Hover */}
+      {/* Golden Ambient Point Light Glow on Hover */}
       {hovered && (
-        <pointLight position={[0, 0, 0.2]} color="#c5a869" intensity={4.0} distance={3.0} />
+        <pointLight position={[0, 0, 0.3]} color="#c5a869" intensity={4.0} distance={3.0} />
       )}
     </group>
   );
@@ -384,11 +365,10 @@ function LobbyArtworkPlane({
         <meshBasicMaterial map={texture} />
       </mesh>
 
-      {/* 3D Crisp Wall Logo Crest Mesh placed at top center wall */}
+      {/* 3D Crisp Wall Logo Crest Mesh glued directly over the lobby wall artwork emblem */}
       <WallCrest3DMesh
-        position={[0, 0.25 * scaleY, 0.015]}
-        scale={[0.58 * scaleX, 0.58 * scaleX, 1]}
-        zoomFactor={zoomFactor}
+        position={[0, 0.24 * scaleY, 0.015]}
+        scale={[0.10 * scaleX, 0.10 * scaleX, 1]}
       />
 
       {/* Render 7 Interactive 3D Doors Sticky Glued Directly to the Image Booths */}
@@ -415,7 +395,8 @@ function LobbyArtworkPlane({
 
       {/* Sticky Glued Central Global Opportunities Globe & Hotspot */}
       <CentralGlobalOpportunitiesMesh
-        position={[0, -0.15 * scaleY, 0.02]}
+        position={[0, -0.16 * scaleY, 0.02]}
+        scale={[0.15 * scaleX, 0.15 * scaleX, 1]}
         onSelect={() => useHouseStore.getState().setIsGlobalModalOpen(true)}
       />
 
@@ -434,48 +415,45 @@ function LobbyArtworkPlane({
   );
 }
 
-// 3. Central Sticky Global Opportunities Hotspot Mesh Component
+// 3. Central Luminous 3D Holographic Globe Kiosk Component (100% Exact PNG Color & Layout Match Glued to Lobby Floor)
 
 function CentralGlobalOpportunitiesMesh({
   position,
+  scale,
   onSelect,
 }: {
   position: [number, number, number];
+  scale: [number, number, number];
   onSelect: () => void;
 }) {
-  const meshRef = useRef<THREE.Group>(null);
-  const ringRef = useRef<THREE.Mesh>(null);
-
-  useFrame((_, delta) => {
-    if (meshRef.current) meshRef.current.rotation.y += delta * 0.4;
-    if (ringRef.current) ringRef.current.rotation.z -= delta * 0.8;
-  });
+  const globeTexture = useTexture("/sources/ChatGPT Image Sep 22, 2026, 01_16_09 AM.png");
+  globeTexture.colorSpace = THREE.SRGBColorSpace;
 
   return (
-    <group position={position} onClick={onSelect}>
-      {/* Base Ring */}
-      <mesh ref={ringRef} position={[0, -0.1, 0]} rotation-x={Math.PI / 2}>
-        <ringGeometry args={[0.3, 0.45, 32]} />
-        <meshBasicMaterial color="#c5a869" wireframe />
+    <group position={position} scale={scale}>
+      {/* Exact High-Resolution Reference PNG Texture Mesh glued to ground */}
+      <mesh position={[0, 0.45, 0]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          map={globeTexture}
+          transparent={true}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
       </mesh>
 
-      {/* Rotating Gold Wireframe Globe */}
-      <group ref={meshRef} position={[0, 0.25, 0]}>
-        <mesh>
-          <sphereGeometry args={[0.35, 20, 20]} />
-          <meshBasicMaterial color="#c5a869" wireframe transparent opacity={0.85} />
-        </mesh>
-      </group>
+      {/* Holographic Cyan & Gold Ambient Point Light Glow */}
+      <pointLight position={[0, 0.5, 0.4]} color="#00d4ff" intensity={4.5} distance={7.0} />
+      <pointLight position={[0, 0.0, 0.4]} color="#ffc83b" intensity={3.0} distance={5.5} />
 
-      <pointLight color="#c5a869" intensity={3.5} distance={4} />
-
-      <Html position={[0, 0.65, 0]} center distanceFactor={8.5}>
+      {/* Floating Interactive CTA Pill Below Globe Pedestal */}
+      <Html position={[0, -0.15, 0]} center distanceFactor={8.0}>
         <button
           onClick={onSelect}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#071322]/95 border-2 border-[#c5a869] text-[#c5a869] text-xs font-extrabold uppercase tracking-widest shadow-[0_0_25px_rgba(197,168,105,0.6)] hover:scale-110 transition-transform cursor-pointer whitespace-nowrap"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full border-2 border-[#c5a869] bg-[#071322]/95 text-[#c5a869] shadow-[0_0_20px_rgba(197,168,105,0.5)] hover:bg-[#00d4ff] hover:border-white hover:text-[#071322] hover:scale-110 transition-all duration-300 cursor-pointer whitespace-nowrap"
         >
-          <Globe className="w-4 h-4 text-[#c5a869] animate-spin-slow" />
-          <span>Global Opportunities</span>
+          <Globe className="w-4 h-4 text-[#00d4ff] animate-spin-slow" />
+          <span className="text-xs font-extrabold uppercase tracking-widest">Global Opportunities</span>
         </button>
       </Html>
     </group>
