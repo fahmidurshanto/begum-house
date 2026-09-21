@@ -197,9 +197,11 @@ const LOBBY_BOOTH_CONFIGS: { id: string; xPct: number; yPct: number; wPct: numbe
 function LobbyArtworkPlane({
   selectedRoom,
   setSelectedRoom,
+  onFlashUpdate,
 }: {
   selectedRoom: ServiceRoom | null;
   setSelectedRoom: (room: ServiceRoom | null) => void;
+  onFlashUpdate: (opacity: number) => void;
 }) {
   const texture = useTexture("/sources/lobby.png");
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -209,8 +211,14 @@ function LobbyArtworkPlane({
   const groupRef = useRef<THREE.Group>(null);
   const darkOverlayMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  // Smooth progress for inside environment illumination: starts 1.0 (100% pitch black) on entry
+  // Lobby entry illumination: starts 1.0 (pitch black) and damps to 0.0
   const illuminationProgressRef = useRef(1.0);
+
+  // Room entry zoom state
+  const isEnteringRoomRef = useRef(false);
+  const enterZoomRef = useRef(0);
+  const enterTargetXPctRef = useRef(0);
+  const enterTargetYPctRef = useRef(0);
 
   // Deep zoom scaling from 1.0x up to 1.85x
   const zoomFactor = 1.0 + Math.min(1, scrollProgress * 0.85);
@@ -221,13 +229,81 @@ function LobbyArtworkPlane({
   const maxPanX = (scaleX - viewport.width) / 2;
   const maxPanY = (scaleY - viewport.height) / 2;
 
+  // Maximum zoom for the room entry rush
+  const MAX_ENTRY_SCALE = 5.5;
+
+  // Handle door click — starts cinematic zoom, delays setSelectedRoom to peak flash
+  const handleDoorSelect = React.useCallback(
+    (room: ServiceRoom) => {
+      if (isEnteringRoomRef.current) return;
+      const config = LOBBY_BOOTH_CONFIGS.find((c) => c.id === room.id);
+      if (!config) {
+        setSelectedRoom(room); // fallback: no position config, switch immediately
+        return;
+      }
+      isEnteringRoomRef.current = true;
+      enterTargetXPctRef.current = config.xPct;
+      enterTargetYPctRef.current = config.yPct;
+
+      // Switch view at peak flash bloom — transition hidden behind the gold flash
+      setTimeout(() => {
+        setSelectedRoom(room);
+      }, 1600);
+    },
+    [setSelectedRoom]
+  );
+
   useFrame((state, delta) => {
-    // 2-Axis Cursor Navigation: combines vertical scroll progress with mouse cursor Y position
+    // ── Room entry cinematic zoom (overrides scroll/mouse pan) ──
+    if (isEnteringRoomRef.current) {
+      enterZoomRef.current = THREE.MathUtils.damp(enterZoomRef.current, 1.0, 1.8, delta);
+      const zProg = enterZoomRef.current;
+
+      // Two-phase easing: slow drift while doors open → explosive cubic rush into portal
+      let easedZ: number;
+      if (zProg < 0.35) {
+        easedZ = (zProg / 0.35) * 0.07; // gentle approach
+      } else {
+        const t = (zProg - 0.35) / 0.65;
+        easedZ = 0.07 + Math.pow(t, 2.4) * 0.93; // aggressive cubic acceleration
+      }
+
+      // Door world position (local coords of the clicked door in the group)
+      const doorWorldX = enterTargetXPctRef.current * scaleX;
+      const doorWorldY = enterTargetYPctRef.current * scaleY;
+      const currentScale = 1.0 + easedZ * (MAX_ENTRY_SCALE - 1.0);
+
+      if (groupRef.current) {
+        groupRef.current.scale.set(currentScale, currentScale, 1);
+        // Pan so the clicked door rushes from its position toward screen center
+        groupRef.current.position.x = -easedZ * MAX_ENTRY_SCALE * doorWorldX;
+        groupRef.current.position.y = -easedZ * MAX_ENTRY_SCALE * doorWorldY;
+      }
+
+      // Warm gold flash bloom: starts at 55% zoom, peaks at 100%
+      let flashOpacity = 0;
+      if (zProg > 0.55) {
+        flashOpacity = Math.min(1, Math.pow((zProg - 0.55) / 0.32, 1.4));
+      }
+      onFlashUpdate(flashOpacity);
+
+      // Keep clearing lobby illumination underneath the flash
+      illuminationProgressRef.current = THREE.MathUtils.damp(
+        illuminationProgressRef.current,
+        0.0,
+        3.5,
+        delta
+      );
+      if (darkOverlayMaterialRef.current) {
+        darkOverlayMaterialRef.current.opacity = illuminationProgressRef.current;
+      }
+      return; // Skip normal pan during room entry
+    }
+
+    // ── Normal lobby scroll + mouse pan ──
     const scrollYOffset = (scrollProgress - 0.5) * maxPanY * 1.5;
     const cursorYOffset = -state.mouse.y * maxPanY * 0.8;
     const targetY = THREE.MathUtils.clamp(scrollYOffset + cursorYOffset, -maxPanY, maxPanY);
-
-    // Horizontal mouse cursor pan across the lobby artwork (X-axis)
     const targetX = THREE.MathUtils.clamp(-state.mouse.x * maxPanX * 0.8, -maxPanX, maxPanX);
 
     if (groupRef.current) {
@@ -235,11 +311,11 @@ function LobbyArtworkPlane({
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, delta * 5.0);
     }
 
-    // Inside environment slow illumination sequence: starts 100% pitch black and slowly damps down to 0.0 (full light)
+    // Fast lobby reveal — entry flash overlay covers the first ~900ms, so we clear fast underneath it
     illuminationProgressRef.current = THREE.MathUtils.damp(
       illuminationProgressRef.current,
       0.0,
-      1.6, // Slow, elegant illumination damp speed
+      3.5, // Fast reveal: nearly transparent by the time the flash clears
       delta
     );
 
@@ -273,7 +349,7 @@ function LobbyArtworkPlane({
             position={[posX, posY, 0.01]}
             scale={[doorW, doorH, 1]}
             isSelected={selectedRoom?.id === room.id}
-            onSelect={() => setSelectedRoom(room)}
+            onSelect={() => handleDoorSelect(room)}
           />
         );
       })}
@@ -300,6 +376,7 @@ function LobbyArtworkPlane({
 }
 
 // 3. Central Sticky Global Opportunities Hotspot Mesh Component
+
 function CentralGlobalOpportunitiesMesh({
   position,
   onSelect,
@@ -369,7 +446,7 @@ function FacadeEntrance3DDoor({
 
   // Colors for black-to-gray portal transition (pure monochrome gradient)
   const pitchBlackColor = useRef(new THREE.Color("#000000"));
-  const glowColor = useRef(new THREE.Color("#9ca3af")); // Sleek architectural cool gray
+  const glowColor = useRef(new THREE.Color("#f0e4c8")); // Warm amber interior light glow
 
   useFrame((_, delta) => {
     // Smoothly damp progress for ultra-fluid door movement
@@ -531,7 +608,15 @@ function FacadeEntrance3DDoor({
 }
 
 // 5. Facade High-Resolution Artwork Texture Plane (`home_page_hero.png`)
-function HighResFacadePlane({ isOpening, onOpen }: { isOpening?: boolean; onOpen: () => void }) {
+function HighResFacadePlane({
+  isOpening,
+  onOpen,
+  onFlashUpdate,
+}: {
+  isOpening?: boolean;
+  onOpen: () => void;
+  onFlashUpdate: (opacity: number) => void;
+}) {
   const texture = useTexture("/sources/home_page_hero.png");
   texture.colorSpace = THREE.SRGBColorSpace;
   const viewport = useThree((state) => state.viewport);
@@ -543,41 +628,62 @@ function HighResFacadePlane({ isOpening, onOpen }: { isOpening?: boolean; onOpen
   const handleOpenClick = () => {
     if (isOpeningDoor) return;
     setIsOpeningDoor(true);
-    // Smooth door opening & portal illumination sequence for 2000ms before switching view into Atrium
+    // Switch scene at peak of flash bloom (1600ms) — hidden behind white flash
     setTimeout(() => {
       onOpen();
-    }, 2000);
+    }, 1600);
   };
 
   // 100% Full screen fill (no black bars, no cropping, fills screen edge-to-edge)
   const width = viewport.width;
   const height = viewport.height;
 
-  // Shifted further left & recessed further backside into the doorway cavity
+  // Door position — slightly right of center, slightly below center
   const doorPosX = width * 0.095;
   const doorPosY = height * -0.07;
   const doorWidth = width * 0.165;
   const doorHeight = height * 0.365;
 
+  // Maximum zoom — facade rushes from 1x up to this as user crosses the threshold
+  const MAX_SCALE = 5.5;
+
   useFrame((_, delta) => {
-    const targetZoom = isOpeningDoor ? 1.0 : 0.0;
+    if (!isOpeningDoor) return;
+
     zoomProgressRef.current = THREE.MathUtils.damp(
       zoomProgressRef.current,
-      targetZoom,
-      2.8, // Fluid camera zoom speed
+      1.0,
+      1.8, // Moderate damp — builds anticipation then explodes
       delta
     );
 
     const zProg = zoomProgressRef.current;
-    const easedZ = 1 - Math.pow(1 - zProg, 2); // Smooth quadratic ease out
+
+    // Two-phase easing:
+    // Phase 1 (0.0 → 0.35): Gentle drift — doors are still swinging open
+    // Phase 2 (0.35 → 1.0): Explosive cubic rush into the open portal
+    let easedZ: number;
+    if (zProg < 0.35) {
+      easedZ = (zProg / 0.35) * 0.07; // slow creep forward
+    } else {
+      const t = (zProg - 0.35) / 0.65;
+      easedZ = 0.07 + Math.pow(t, 2.4) * 0.93; // aggressive cubic acceleration
+    }
 
     if (groupRef.current) {
-      // Scale facade smoothly up towards 1.35x and shift position towards doorway center
-      const currentScale = 1.0 + easedZ * 0.35;
+      const currentScale = 1.0 + easedZ * (MAX_SCALE - 1.0);
       groupRef.current.scale.set(currentScale, currentScale, 1);
-      groupRef.current.position.x = -easedZ * doorPosX * 0.35;
-      groupRef.current.position.y = -easedZ * doorPosY * 0.35;
+      // Re-centre on the door portal as scale grows
+      groupRef.current.position.x = -easedZ * doorPosX * (MAX_SCALE - 1.0);
+      groupRef.current.position.y = -easedZ * doorPosY * (MAX_SCALE - 1.0);
     }
+
+    // Warm gold flash bloom: begins when zoom crosses 0.55, peaks at 1.0
+    let flashOpacity = 0;
+    if (zProg > 0.55) {
+      flashOpacity = Math.min(1, Math.pow((zProg - 0.55) / 0.32, 1.4));
+    }
+    onFlashUpdate(flashOpacity);
   });
 
   return (
@@ -588,14 +694,13 @@ function HighResFacadePlane({ isOpening, onOpen }: { isOpening?: boolean; onOpen
         <meshBasicMaterial map={texture} />
       </mesh>
 
-      {/* 3D Double Opening Door (Positioned at z = 0.02 so void mesh at z = 0.022 is IN FRONT of background z = 0) */}
+      {/* 3D Double Opening Door (Positioned at z = 0.02) */}
       <FacadeEntrance3DDoor
         position={[doorPosX, doorPosY, 0.02]}
         scale={[doorWidth, doorHeight, 1]}
         isOpening={isOpeningDoor}
         onOpen={handleOpenClick}
       />
-
     </group>
   );
 }
@@ -816,6 +921,49 @@ export const House3DScene: React.FC = () => {
   const { view, openHouse, selectedRoom, setSelectedRoom } = useHouseStore();
   const isDoorsOpen = view === "ATRIUM";
 
+  // Ref to the full-screen flash overlay DOM element
+  const flashDivRef = useRef<HTMLDivElement>(null);
+
+  // Fade out the flash overlay — reusable rAF helper
+  const fadeOutFlash = React.useCallback((duration = 900) => {
+    const flashDiv = flashDivRef.current;
+    if (!flashDiv) return;
+    const startOpacity = parseFloat(flashDiv.style.opacity || "1");
+    if (startOpacity < 0.01) return;
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 2); // ease-out quad
+      if (flashDiv) flashDiv.style.opacity = String(startOpacity * (1 - eased));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, []);
+
+  // Fade out when entering the lobby from the facade (FACADE → ATRIUM)
+  // and when entering a full-room view (ATRIUM → ROOM for business-advisory)
+  React.useEffect(() => {
+    if (view === "ATRIUM" || view === "ROOM") {
+      fadeOutFlash(900);
+    }
+  }, [view, fadeOutFlash]);
+
+  // Fade out when a modal-based service room is selected (view stays ATRIUM)
+  React.useEffect(() => {
+    if (selectedRoom !== null) {
+      fadeOutFlash(900);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRoom]);
+
+  // Direct DOM update from useFrame — avoids per-frame React re-renders
+  const updateFlash = React.useCallback((opacity: number) => {
+    if (flashDivRef.current) {
+      flashDivRef.current.style.opacity = String(opacity);
+    }
+  }, []);
+
   return (
     <div className="absolute inset-0 z-0 overflow-hidden bg-[#040b14]">
       <Canvas className="w-full h-full">
@@ -827,16 +975,43 @@ export const House3DScene: React.FC = () => {
 
         <Suspense fallback={null}>
           {view === "FACADE" && (
-            <HighResFacadePlane isOpening={isDoorsOpen} onOpen={openHouse} />
+            <HighResFacadePlane
+              isOpening={isDoorsOpen}
+              onOpen={openHouse}
+              onFlashUpdate={updateFlash}
+            />
           )}
           {view === "ATRIUM" && (
-            <LobbyArtworkPlane selectedRoom={selectedRoom} setSelectedRoom={setSelectedRoom} />
+          <LobbyArtworkPlane
+              selectedRoom={selectedRoom}
+              setSelectedRoom={setSelectedRoom}
+              onFlashUpdate={updateFlash}
+            />
           )}
           {view === "ROOM" && selectedRoom && (
             <IndividualRoomPlane room={selectedRoom} />
           )}
         </Suspense>
       </Canvas>
+
+      {/*
+        Entry flash overlay — warm gold bloom that bridges the facade → lobby transition.
+        Opacity is driven frame-by-frame via direct DOM ref from HighResFacadePlane's useFrame,
+        then faded out via requestAnimationFrame once the lobby mounts.
+        z-index 20 ensures it sits above the WebGL canvas.
+      */}
+      <div
+        ref={flashDivRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(ellipse at 57% 52%, #ffffff 0%, #f5ede0 25%, #c5a869 62%, #8b6914 100%)",
+          opacity: 0,
+          pointerEvents: "none",
+          zIndex: 20,
+        }}
+      />
     </div>
   );
 };
