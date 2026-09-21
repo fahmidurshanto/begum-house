@@ -60,7 +60,7 @@ export default function HomePage() {
       <RefinedCursor />
       <main id="scroll-container" className="min-h-[400vh] bg-[#faf6f0] text-[#1a1a2e] relative font-sans selection:bg-[#c5a869] selection:text-[#1a1a2e]">
         <ScrollTracker />
-        
+
         {/* Fixed Master Viewport Container */}
         <div className="fixed inset-0 z-0 overflow-hidden">
           {/* Header */}
@@ -107,7 +107,7 @@ export default function HomePage() {
 
 
               {/* Bottom Quick Bar */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-6 px-6 py-3 rounded-full bg-[#faf6f0]/95 border border-[#c5a869]/50 text-xs text-[#1a1a2e] font-bold backdrop-blur-md shadow-xl pointer-events-auto">
+              {/* <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-6 px-6 py-3 rounded-full bg-[#faf6f0]/95 border border-[#c5a869]/50 text-xs text-[#1a1a2e] font-bold backdrop-blur-md shadow-xl pointer-events-auto">
                 <span className="text-[#c5a869]">ATRIUM FEATURES:</span>
                 <button onClick={() => setIsRoiModalOpen(true)} className="hover:text-[#c5a869] flex items-center gap-1.5 transition-colors font-medium">
                   <Calculator className="w-3.5 h-3.5 text-[#00d4ff]" /> ROI Calculator
@@ -116,7 +116,7 @@ export default function HomePage() {
                 <button onClick={() => setIsGlobalModalOpen(true)} className="hover:text-[#c5a869] flex items-center gap-1.5 transition-colors font-medium">
                   <Globe className="w-3.5 h-3.5 text-[#c5a869]" /> Global Opportunities
                 </button>
-              </div>
+              </div> */}
             </div>
           )}
 
