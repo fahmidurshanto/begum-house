@@ -55,14 +55,6 @@ export const CrestHeader: React.FC = () => {
           >
             The House
           </button>
-          
-          <button
-            onClick={() => setIsGlobalModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-transparent hover:text-[#c5a869] hover:bg-[#1a1a2e] hover:border-[#c5a869]/40 shadow-sm transition-all duration-300"
-          >
-            <Globe className="w-3.5 h-3.5 text-[#c5a869]" />
-            Global Opportunities
-          </button>
         </nav>
 
         {/* Action Controls */}

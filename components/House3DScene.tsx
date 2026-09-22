@@ -835,7 +835,11 @@ function IndividualRoomPlane({ room }: { room: ServiceRoom }) {
         <meshBasicMaterial map={texture} />
       </mesh>
 
-      {/* 3D Wall Crest Logo mounted on the right side blue wall space matching left side logo size */}
+      {/* Symmetrical 3D Wall Crest Logos mounted on both left and right side wall spaces */}
+      <WallCrest3DMesh
+        position={[-baseW * 0.35, baseH * 0.08, 0.005]}
+        scale={[baseW * 0.095, baseW * 0.095, 1]}
+      />
       <WallCrest3DMesh
         position={[baseW * 0.35, baseH * 0.08, 0.005]}
         scale={[baseW * 0.095, baseW * 0.095, 1]}
